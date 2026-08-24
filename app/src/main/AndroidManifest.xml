@@ -1,7 +1,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <application
-        android:theme="@style/Theme.METMC"
+        android:theme="@style/Theme.METMCOS"
         android:label="METMC OS"
         android:allowBackup="false"
         android:supportsRtl="true">
