@@ -69,6 +69,12 @@ public class MainActivity extends Activity {
 
     // Central Android root executor.
     // All privileged METMC operations should use this layer.
+
+
+
+
+
+
     java.lang.Process rootProcess(String command) throws Exception {
         String[] suPaths = {
             "/system/bin/su",
@@ -82,9 +88,7 @@ public class MainActivity extends Activity {
         for (String su : suPaths) {
             try {
                 java.lang.Process p = new ProcessBuilder(
-                    su,
-                    "-c",
-                    command
+                    su, "-c", command
                 ).redirectErrorStream(true).start();
 
                 return p;
@@ -147,10 +151,8 @@ public class MainActivity extends Activity {
 
         if (code != 0) {
             throw new java.io.IOException(
-                "Root command failed (" +
-                code +
-                "):\n" +
-                output
+                "Root command failed (" + code + "):\n" +
+                output.toString()
             );
         }
 
