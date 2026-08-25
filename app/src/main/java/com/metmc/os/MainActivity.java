@@ -10,6 +10,9 @@ import android.view.*;
 import android.widget.*;
 import java.text.SimpleDateFormat;
 import java.util.*;
+import java.io.*;
+import java.net.*;
+import java.util.zip.GZIPInputStream;
 
 public class MainActivity extends Activity {
 
@@ -233,16 +236,250 @@ public class MainActivity extends Activity {
         }
     }
 
-    void linuxPanel() {
-        final String ROOTFS = "/data/local/linux/rootfs";
+    static final String METMC_ROOTFS = "/data/local/linux/rootfs";
+    static final String METMC_LINUX = "/data/local/linux";
+    static final String DEBIAN_URL =
+        "https://github.com/debuerreotype/docker-debian-artifacts/raw/refs/heads/dist-arm64v8/bookworm/rootfs.tar.xz";
 
-        if (!new java.io.File(ROOTFS + "/bin/bash").exists()) {
-            panel("METMC Linux",
-                "Debian rootfs was not found.\n\nExpected:\n" +
-                ROOTFS + "\n\nCheck that the Debian chroot is installed.");
+    void linuxPanel() {
+        File rootfs = new File(METMC_ROOTFS);
+
+        if (!new File(rootfs, "bin/bash").exists()) {
+            showLinuxInstaller();
             return;
         }
 
+        showLinuxControl();
+    }
+
+    void showLinuxInstaller() {
+        final AlertDialog dialog = new AlertDialog.Builder(this)
+            .setTitle("METMC Linux")
+            .setMessage(
+                "Debian Linux environment was not found.\\n\\n" +
+                "METMC OS can install the ARM64 Debian environment " +
+                "into:\\n" + METMC_ROOTFS +
+                "\\n\\nRoot access is required.")
+            .setPositiveButton("Install Debian", null)
+            .setNegativeButton("Later", null)
+            .create();
+
+        dialog.setOnShowListener(v ->
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE)
+                .setOnClickListener(x -> {
+                    dialog.dismiss();
+                    installDebian();
+                })
+        );
+
+        dialog.show();
+    }
+
+    void installDebian() {
+        if (!hasRoot()) {
+            panel("METMC Linux",
+                "Root access is required to install Debian into " +
+                METMC_LINUX + ".");
+            return;
+        }
+
+        new AlertDialog.Builder(this)
+            .setTitle("Install Debian")
+            .setMessage(
+                "METMC OS will create the Linux environment and " +
+                "download the Debian ARM64 root filesystem.\\n\\n" +
+                "This can require several hundred MB of download " +
+                "and additional storage after extraction.")
+            .setPositiveButton("Continue", (d,w) -> startDebianInstall())
+            .setNegativeButton("Cancel",null)
+            .show();
+    }
+
+    boolean hasRoot() {
+        try {
+            Process p = new ProcessBuilder("su","-c","id").start();
+            return p.waitFor() == 0;
+        } catch(Exception e) {
+            return false;
+        }
+    }
+
+    void startDebianInstall() {
+        final ProgressDialog progress = new ProgressDialog(this);
+        progress.setTitle("METMC Linux");
+        progress.setMessage("Preparing Debian...");
+        progress.setProgressStyle(ProgressDialog.STYLE_HORIZONTAL);
+        progress.setIndeterminate(true);
+        progress.setCancelable(false);
+        progress.show();
+
+        new Thread(() -> {
+            String result;
+
+            try {
+                File base = new File(METMC_LINUX);
+                File archive = new File(base,"debian-bookworm-arm64.tar.xz");
+
+                runRoot(
+                    "mkdir -p " + shellQuote(METMC_LINUX) +
+                    " " + shellQuote(METMC_ROOTFS)
+                );
+
+                runOnUiThread(() -> {
+                    progress.setIndeterminate(false);
+                    progress.setProgress(0);
+                    progress.setMessage("Downloading Debian...");
+                });
+
+                downloadFile(DEBIAN_URL, archive, progress);
+
+                runOnUiThread(() ->
+                    progress.setMessage("Extracting Debian..."));
+
+                runRoot(
+                    "rm -rf " + shellQuote(METMC_ROOTFS) +
+                    "/* " +
+                    "&& tar -xJf " + shellQuote(archive.getAbsolutePath()) +
+                    " -C " + shellQuote(METMC_ROOTFS)
+                );
+
+                runOnUiThread(() ->
+                    progress.setMessage("Configuring Debian..."));
+
+                runRoot(
+                    "mkdir -p " + shellQuote(METMC_ROOTFS + "/proc") +
+                    " " + shellQuote(METMC_ROOTFS + "/sys") +
+                    " " + shellQuote(METMC_ROOTFS + "/dev") +
+                    " " + shellQuote(METMC_ROOTFS + "/tmp") +
+                    " " + shellQuote(METMC_ROOTFS + "/run") +
+                    " && chmod 1777 " + shellQuote(METMC_ROOTFS + "/tmp") +
+                    " && printf '%s\\n' " +
+                    "'nameserver 1.1.1.1' " +
+                    "'nameserver 8.8.8.8' " +
+                    "> " + shellQuote(METMC_ROOTFS + "/etc/resolv.conf")
+                );
+
+                runRoot(
+                    "rm -f " + shellQuote(archive.getAbsolutePath())
+                );
+
+                runOnUiThread(() ->
+                    progress.setMessage("Verifying Debian..."));
+
+                final String check = runRoot(
+                    "test -x " + shellQuote(METMC_ROOTFS + "/bin/bash") +
+                    " && chroot " + shellQuote(METMC_ROOTFS) +
+                    " /bin/bash -lc " +
+                    shellQuote(
+                        "echo 'METMC Linux ready'; " +
+                        "cat /etc/os-release | grep PRETTY_NAME; " +
+                        "uname -m"
+                    )
+                );
+
+                result = check;
+
+            } catch(Exception e) {
+                result = "Installation failed:\\n" + e;
+            }
+
+            final String finalResult = result;
+
+            runOnUiThread(() -> {
+                progress.dismiss();
+
+                if (new File(METMC_ROOTFS + "/bin/bash").exists()) {
+                    new AlertDialog.Builder(this)
+                        .setTitle("Debian Ready")
+                        .setMessage(
+                            "METMC Linux has been installed.\\n\\n" +
+                            finalResult)
+                        .setPositiveButton("Open Linux", (d,w) ->
+                            showLinuxControl())
+                        .show();
+                } else {
+                    panel("Debian Installation Failed", finalResult);
+                }
+            });
+
+        }).start();
+    }
+
+    void downloadFile(
+        String urlString,
+        File target,
+        ProgressDialog progress) throws Exception {
+
+        URL url = new URL(urlString);
+        HttpURLConnection c =
+            (HttpURLConnection)url.openConnection();
+
+        c.setConnectTimeout(30000);
+        c.setReadTimeout(60000);
+        c.setInstanceFollowRedirects(true);
+        c.connect();
+
+        int size = c.getContentLength();
+
+        if(size > 0) {
+            progress.setIndeterminate(false);
+            progress.setMax(100);
+        }
+
+        try(
+            InputStream in = new BufferedInputStream(c.getInputStream());
+            FileOutputStream out = new FileOutputStream(target)
+        ) {
+            byte[] buffer = new byte[1024 * 128];
+            long done = 0;
+            int n;
+
+            while((n=in.read(buffer))!=-1) {
+                out.write(buffer,0,n);
+                done += n;
+
+                if(size > 0) {
+                    int percent=(int)((done*100)/size);
+                    runOnUiThread(() ->
+                        progress.setProgress(percent));
+                }
+            }
+
+            out.flush();
+        } finally {
+            c.disconnect();
+        }
+    }
+
+    String runRoot(String command) throws Exception {
+        Process p = new ProcessBuilder(
+            "su","-c",command)
+            .redirectErrorStream(true)
+            .start();
+
+        BufferedReader r = new BufferedReader(
+            new InputStreamReader(p.getInputStream()));
+
+        StringBuilder out = new StringBuilder();
+        String line;
+
+        while((line=r.readLine())!=null)
+            out.append(line).append("\\n");
+
+        int code=p.waitFor();
+
+        if(code != 0)
+            throw new IOException(
+                "Root command failed (" + code + "):\\n" + out);
+
+        return out.toString();
+    }
+
+    String shellQuote(String s) {
+        return "'" + s.replace("'","'\\\\''") + "'";
+    }
+
+    void showLinuxControl() {
         final Dialog d = new Dialog(this);
 
         LinearLayout box = new LinearLayout(this);
@@ -254,101 +491,42 @@ public class MainActivity extends Activity {
         title.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
         box.addView(title,new LinearLayout.LayoutParams(-1,dp(55)));
 
-        TextView info = tv(
-            "Rootfs: " + ROOTFS +
-            "\\nArchitecture: arm64" +
-            "\\nRoot access: checking...",
-            14);
-        info.setTextColor(GRAY);
-        box.addView(info,new LinearLayout.LayoutParams(-1,dp(75)));
+        Button shell = btn("▣ Debian Terminal");
+        box.addView(shell,new LinearLayout.LayoutParams(-1,dp(58)));
 
-        Button statusBtn = btn("● Check Debian");
-        box.addView(statusBtn,new LinearLayout.LayoutParams(-1,dp(55)));
+        Button apps = btn("▦ Linux Applications");
+        box.addView(apps,new LinearLayout.LayoutParams(-1,dp(58)));
 
-        Button shellBtn = btn("▣ Debian Shell");
-        box.addView(shellBtn,new LinearLayout.LayoutParams(-1,dp(55)));
+        Button update = btn("↻ Update Debian");
+        box.addView(update,new LinearLayout.LayoutParams(-1,dp(58)));
 
-        Button appsBtn = btn("▦ Linux Applications");
-        box.addView(appsBtn,new LinearLayout.LayoutParams(-1,dp(55)));
+        Button info = btn("● Linux Status");
+        box.addView(info,new LinearLayout.LayoutParams(-1,dp(58)));
 
-        Button updateBtn = btn("↻ Refresh Linux");
-        box.addView(updateBtn,new LinearLayout.LayoutParams(-1,dp(55)));
+        Button close = btn("Close");
+        box.addView(close,new LinearLayout.LayoutParams(-1,dp(58)));
 
-        Button closeBtn = btn("Close");
-        box.addView(closeBtn,new LinearLayout.LayoutParams(-1,dp(55)));
+        shell.setOnClickListener(v -> showLinuxShell());
 
-        statusBtn.setOnClickListener(v ->
-            runLinuxCommand("printf 'Debian: '; cat /etc/os-release | grep '^PRETTY_NAME='; printf 'Arch: '; uname -m; printf 'Kernel: '; uname -r",
-                result -> info.setText(
-                    "Rootfs: " + ROOTFS +
-                    "\\n" + result)));
+        apps.setOnClickListener(v -> showLinuxApps());
 
-        shellBtn.setOnClickListener(v -> showLinuxShell());
+        update.setOnClickListener(v ->
+            runLinuxCommand(
+                "apt-get update",
+                r -> panel("Debian",r)));
 
-        appsBtn.setOnClickListener(v -> showLinuxApps());
+        info.setOnClickListener(v ->
+            runLinuxCommand(
+                "cat /etc/os-release; echo; uname -m",
+                r -> panel("Linux Status",r)));
 
-        updateBtn.setOnClickListener(v ->
-            runLinuxCommand("apt-get update",
-                result -> panel("Debian", result)));
-
-        closeBtn.setOnClickListener(v -> d.dismiss());
+        close.setOnClickListener(v -> d.dismiss());
 
         d.setContentView(box);
         d.show();
 
         if(d.getWindow()!=null)
-            d.getWindow().setLayout(dp(650),dp(520));
-
-        runLinuxCommand("id; uname -m",
-            result -> info.setText(
-                "Rootfs: " + ROOTFS +
-                "\\n" + result));
-    }
-
-    interface LinuxCallback {
-        void done(String result);
-    }
-
-    void runLinuxCommand(String command, LinuxCallback callback) {
-        new Thread(() -> {
-            StringBuilder out = new StringBuilder();
-
-            try {
-                String full =
-                    "export HOME=/root; " +
-                    "export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin; " +
-                    "export LANG=C; " +
-                    "chroot /data/local/linux/rootfs /bin/bash -lc " +
-                    shellQuote(command);
-
-                Process p = new ProcessBuilder(
-                    "su","-c",full)
-                    .redirectErrorStream(true)
-                    .start();
-
-                java.io.BufferedReader r =
-                    new java.io.BufferedReader(
-                        new java.io.InputStreamReader(p.getInputStream()));
-
-                String line;
-                while((line=r.readLine())!=null)
-                    out.append(line).append("\\n");
-
-                int code=p.waitFor();
-                out.append("\\n[exit ").append(code).append("]");
-
-            } catch(Exception e) {
-                out.append("ERROR: ").append(e);
-            }
-
-            final String result=out.toString();
-
-            runOnUiThread(() -> callback.done(result));
-        }).start();
-    }
-
-    String shellQuote(String s) {
-        return "'" + s.replace("'","'\\\\''") + "'";
+            d.getWindow().setLayout(dp(650),dp(500));
     }
 
     void showLinuxShell() {
@@ -366,9 +544,7 @@ public class MainActivity extends Activity {
         ScrollView scroll=new ScrollView(this);
         TextView output=tv("root@debian:~$ Connected\\n",13);
         output.setTypeface(Typeface.MONOSPACE);
-        output.setTextColor(Color.WHITE);
         scroll.addView(output);
-
         box.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
 
         EditText command=new EditText(this);
@@ -377,7 +553,6 @@ public class MainActivity extends Activity {
         command.setTextColor(Color.WHITE);
         command.setSingleLine(true);
         command.setTypeface(Typeface.MONOSPACE);
-
         box.addView(command,new LinearLayout.LayoutParams(-1,dp(55)));
 
         Button run=btn("Run");
@@ -385,14 +560,15 @@ public class MainActivity extends Activity {
 
         run.setOnClickListener(v -> {
             String cmd=command.getText().toString().trim();
-            if(cmd.length()==0) return;
+            if(cmd.length()==0)return;
 
             output.append("\\nroot@debian:~$ "+cmd+"\\n");
             command.setText("");
 
-            runLinuxCommand(cmd,result -> {
-                output.append(result+"\\n");
-                scroll.post(() -> scroll.fullScroll(View.FOCUS_DOWN));
+            runLinuxCommand(cmd,r -> {
+                output.append(r+"\\n");
+                scroll.post(() ->
+                    scroll.fullScroll(View.FOCUS_DOWN));
             });
         });
 
@@ -403,38 +579,42 @@ public class MainActivity extends Activity {
             d.getWindow().setLayout(dp(700),dp(600));
     }
 
+    void runLinuxCommand(
+        String command,
+        LinuxCallback callback) {
+
+        new Thread(() -> {
+            String result;
+
+            try {
+                String full =
+                    "export HOME=/root; " +
+                    "export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin; " +
+                    "export LANG=C; " +
+                    "chroot " + shellQuote(METMC_ROOTFS) +
+                    " /bin/bash -lc " +
+                    shellQuote(command);
+
+                result=runRoot(full);
+
+            } catch(Exception e) {
+                result="ERROR: "+e;
+            }
+
+            final String r=result;
+            runOnUiThread(() -> callback.done(r));
+        }).start();
+    }
+
+    interface LinuxCallback {
+        void done(String result);
+    }
+
     void showLinuxApps() {
         runLinuxCommand(
-            "find /usr/share/applications -name '*.desktop' -type f 2>/dev/null | sort | head -100",
-            result -> {
-                final Dialog d=new Dialog(this);
-
-                LinearLayout box=new LinearLayout(this);
-                box.setOrientation(LinearLayout.VERTICAL);
-                box.setPadding(dp(20),dp(20),dp(20),dp(20));
-                box.setBackgroundColor(PANEL);
-
-                TextView title=tv("Debian Applications",21);
-                title.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
-                box.addView(title,new LinearLayout.LayoutParams(-1,dp(55)));
-
-                ScrollView scroll=new ScrollView(this);
-                TextView list=tv(result,13);
-                list.setTypeface(Typeface.MONOSPACE);
-                scroll.addView(list);
-
-                box.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
-
-                Button close=btn("Close");
-                close.setOnClickListener(v -> d.dismiss());
-                box.addView(close,new LinearLayout.LayoutParams(-1,dp(55)));
-
-                d.setContentView(box);
-                d.show();
-
-                if(d.getWindow()!=null)
-                    d.getWindow().setLayout(dp(700),dp(600));
-            });
+            "find /usr/share/applications -name '*.desktop' " +
+            "-type f 2>/dev/null | sort | head -100",
+            result -> panel("Debian Applications",result));
     }
 
     void settings() {
