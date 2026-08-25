@@ -605,6 +605,20 @@ public class MainActivity extends Activity {
                 "cat /etc/os-release; echo; uname -m",
                 r -> panel("Linux Status",r)));
 
+        Button desktop = btn("Open Linux Desktop");
+        desktop.setOnClickListener(v ->
+            startActivity(
+                new Intent(
+                    MainActivity.this,
+                    com.metmc.os.linux.LinuxDesktopActivity.class
+                )
+            )
+        );
+        box.addView(
+            desktop,
+            new LinearLayout.LayoutParams(-1,dp(55))
+        );
+
         close.setOnClickListener(v -> d.dismiss());
 
         d.setContentView(box);
