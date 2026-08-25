@@ -22,18 +22,28 @@ jobs:
       - name: Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Install SDK
+      - name: Install Android SDK
         run: |
           yes | sdkmanager --licenses >/dev/null || true
           sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
 
-      - name: Install Gradle 8.10
+      - name: Install Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.10'
 
+      - name: Verify project
+        run: |
+          echo "===== PROJECT ====="
+          find . -maxdepth 4 -type f | sort
+          echo "===== MANIFEST ====="
+          cat app/src/main/AndroidManifest.xml
+          echo "===== JAVA ====="
+          sed -n '1,400p' app/src/main/java/com/metmc/os/MainActivity.java
+
       - name: Build METMC OS
-        run: gradle clean assembleDebug --stacktrace --no-daemon
+        run: |
+          gradle clean assembleDebug --stacktrace --no-daemon --warning-mode all
 
       - name: Upload APK
         if: success()
