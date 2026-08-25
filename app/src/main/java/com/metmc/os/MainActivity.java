@@ -297,7 +297,7 @@ public class MainActivity extends Activity {
 
     boolean hasRoot() {
         try {
-            Process p = new ProcessBuilder("su","-c","id").start();
+            java.lang.Process p = new ProcessBuilder("su","-c","id").start();
             return p.waitFor() == 0;
         } catch(Exception e) {
             return false;
@@ -452,7 +452,7 @@ public class MainActivity extends Activity {
     }
 
     String runRoot(String command) throws Exception {
-        Process p = new ProcessBuilder(
+        java.lang.Process p = new ProcessBuilder(
             "su","-c",command)
             .redirectErrorStream(true)
             .start();
