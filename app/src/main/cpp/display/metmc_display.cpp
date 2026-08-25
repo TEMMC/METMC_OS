@@ -3,6 +3,7 @@
 #include <android/native_window_jni.h>
 #include <android/log.h>
 #include <mutex>
+#include <cstring>
 
 #define LOG_TAG "METMC_DISPLAY"
 
@@ -13,6 +14,13 @@ static int g_width = 1280;
 static int g_height = 720;
 static bool g_running = false;
 
+static void releaseWindow() {
+    if (g_window) {
+        ANativeWindow_release(g_window);
+        g_window = nullptr;
+    }
+}
+
 extern "C"
 JNIEXPORT void JNICALL
 Java_com_metmc_os_linux_LinuxDisplayBridge_nativeAttach(
@@ -22,16 +30,12 @@ Java_com_metmc_os_linux_LinuxDisplayBridge_nativeAttach(
 
     std::lock_guard<std::mutex> lock(g_mutex);
 
-    if (g_window) {
-        ANativeWindow_release(g_window);
-        g_window = nullptr;
-    }
+    releaseWindow();
 
     if (!surface)
         return;
 
-    g_window =
-        ANativeWindow_fromSurface(env, surface);
+    g_window = ANativeWindow_fromSurface(env, surface);
 
     if (g_window) {
         ANativeWindow_setBuffersGeometry(
@@ -57,12 +61,8 @@ Java_com_metmc_os_linux_LinuxDisplayBridge_nativeDetach(
 
     std::lock_guard<std::mutex> lock(g_mutex);
 
-    if (g_window) {
-        ANativeWindow_release(g_window);
-        g_window = nullptr;
-    }
-
     g_running = false;
+    releaseWindow();
 }
 
 extern "C"
@@ -98,6 +98,7 @@ Java_com_metmc_os_linux_LinuxDisplayBridge_nativeStart(
         jclass) {
 
     std::lock_guard<std::mutex> lock(g_mutex);
+
     g_running = true;
 }
 
@@ -108,5 +109,6 @@ Java_com_metmc_os_linux_LinuxDisplayBridge_nativeStop(
         jclass) {
 
     std::lock_guard<std::mutex> lock(g_mutex);
+
     g_running = false;
 }
