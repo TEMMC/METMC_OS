@@ -35,15 +35,42 @@ public class WallpaperManager {
         if (image == null)
             return;
 
-        desktop.setBackground(
-                new android.graphics.drawable.BitmapDrawable(
-                        activity.getResources(),
-                        android.graphics.BitmapFactory
-                                .decodeStream(
-                                        activity.getContentResolver()
-                                                .openInputStream(image)
-                                )
-                )
-        );
+        try {
+            java.io.InputStream stream =
+                    activity.getContentResolver()
+                            .openInputStream(image);
+
+            if (stream == null)
+                return;
+
+            android.graphics.Bitmap bitmap =
+                    android.graphics.BitmapFactory
+                            .decodeStream(stream);
+
+            stream.close();
+
+            if (bitmap == null)
+                return;
+
+            android.graphics.drawable.BitmapDrawable drawable =
+                    new android.graphics.drawable.BitmapDrawable(
+                            activity.getResources(),
+                            bitmap
+                    );
+
+            drawable.setGravity(
+                    android.view.Gravity.CENTER
+            );
+
+            desktop.setBackground(drawable);
+
+        } catch (Exception e) {
+
+            android.widget.Toast.makeText(
+                    activity,
+                    "Wallpaper error: " + e.getMessage(),
+                    android.widget.Toast.LENGTH_LONG
+            ).show();
+        }
     }
 }
