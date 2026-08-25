@@ -396,7 +396,7 @@ public class MainActivity extends Activity {
 
     boolean hasRoot() {
         try {
-            java.lang.Process p = new ProcessBuilder("su","-c","id").start();
+            java.lang.Process p = rootProcess("id");
             return p.waitFor() == 0;
         } catch(Exception e) {
             return false;
