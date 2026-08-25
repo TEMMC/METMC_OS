@@ -1,15 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <application
-        android:theme="@style/Theme.METMCOS"
-        android:label="METMC OS"
         android:allowBackup="false"
+        android:label="METMC OS"
+        android:theme="@style/Theme.METMCOS"
         android:supportsRtl="true">
 
         <activity
             android:name=".MainActivity"
             android:screenOrientation="landscape"
-            android:configChanges="orientation|screenSize|keyboardHidden"
             android:exported="true">
 
             <intent-filter>
