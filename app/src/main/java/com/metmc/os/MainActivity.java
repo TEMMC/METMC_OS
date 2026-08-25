@@ -234,20 +234,207 @@ public class MainActivity extends Activity {
     }
 
     void linuxPanel() {
-        new AlertDialog.Builder(this)
-            .setTitle("METMC Linux")
-            .setMessage(
-                "Linux subsystem\n\n"+
-                "Status: Ready\n"+
-                "Architecture: arm64\n"+
-                "Display: Android Surface\n\n"+
-                "Linux integration layer is reserved for the next subsystem build."
-            )
-            .setPositiveButton("Start", (d,w) ->
-                panel("METMC Linux","Linux subsystem control initialized.")
-            )
-            .setNegativeButton("Close",null)
-            .show();
+        final String ROOTFS = "/data/local/linux/rootfs";
+
+        if (!new java.io.File(ROOTFS + "/bin/bash").exists()) {
+            panel("METMC Linux",
+                "Debian rootfs was not found.\n\nExpected:\n" +
+                ROOTFS + "\n\nCheck that the Debian chroot is installed.");
+            return;
+        }
+
+        final Dialog d = new Dialog(this);
+
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(dp(20),dp(20),dp(20),dp(20));
+        box.setBackgroundColor(PANEL);
+
+        TextView title = tv("🐧 METMC Linux • Debian",22);
+        title.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
+        box.addView(title,new LinearLayout.LayoutParams(-1,dp(55)));
+
+        TextView info = tv(
+            "Rootfs: " + ROOTFS +
+            "\\nArchitecture: arm64" +
+            "\\nRoot access: checking...",
+            14);
+        info.setTextColor(GRAY);
+        box.addView(info,new LinearLayout.LayoutParams(-1,dp(75)));
+
+        Button statusBtn = btn("● Check Debian");
+        box.addView(statusBtn,new LinearLayout.LayoutParams(-1,dp(55)));
+
+        Button shellBtn = btn("▣ Debian Shell");
+        box.addView(shellBtn,new LinearLayout.LayoutParams(-1,dp(55)));
+
+        Button appsBtn = btn("▦ Linux Applications");
+        box.addView(appsBtn,new LinearLayout.LayoutParams(-1,dp(55)));
+
+        Button updateBtn = btn("↻ Refresh Linux");
+        box.addView(updateBtn,new LinearLayout.LayoutParams(-1,dp(55)));
+
+        Button closeBtn = btn("Close");
+        box.addView(closeBtn,new LinearLayout.LayoutParams(-1,dp(55)));
+
+        statusBtn.setOnClickListener(v ->
+            runLinuxCommand("printf 'Debian: '; cat /etc/os-release | grep '^PRETTY_NAME='; printf 'Arch: '; uname -m; printf 'Kernel: '; uname -r",
+                result -> info.setText(
+                    "Rootfs: " + ROOTFS +
+                    "\\n" + result)));
+
+        shellBtn.setOnClickListener(v -> showLinuxShell());
+
+        appsBtn.setOnClickListener(v -> showLinuxApps());
+
+        updateBtn.setOnClickListener(v ->
+            runLinuxCommand("apt-get update",
+                result -> panel("Debian", result)));
+
+        closeBtn.setOnClickListener(v -> d.dismiss());
+
+        d.setContentView(box);
+        d.show();
+
+        if(d.getWindow()!=null)
+            d.getWindow().setLayout(dp(650),dp(520));
+
+        runLinuxCommand("id; uname -m",
+            result -> info.setText(
+                "Rootfs: " + ROOTFS +
+                "\\n" + result));
+    }
+
+    interface LinuxCallback {
+        void done(String result);
+    }
+
+    void runLinuxCommand(String command, LinuxCallback callback) {
+        new Thread(() -> {
+            StringBuilder out = new StringBuilder();
+
+            try {
+                String full =
+                    "export HOME=/root; " +
+                    "export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin; " +
+                    "export LANG=C; " +
+                    "chroot /data/local/linux/rootfs /bin/bash -lc " +
+                    shellQuote(command);
+
+                Process p = new ProcessBuilder(
+                    "su","-c",full)
+                    .redirectErrorStream(true)
+                    .start();
+
+                java.io.BufferedReader r =
+                    new java.io.BufferedReader(
+                        new java.io.InputStreamReader(p.getInputStream()));
+
+                String line;
+                while((line=r.readLine())!=null)
+                    out.append(line).append("\\n");
+
+                int code=p.waitFor();
+                out.append("\\n[exit ").append(code).append("]");
+
+            } catch(Exception e) {
+                out.append("ERROR: ").append(e);
+            }
+
+            final String result=out.toString();
+
+            runOnUiThread(() -> callback.done(result));
+        }).start();
+    }
+
+    String shellQuote(String s) {
+        return "'" + s.replace("'","'\\\\''") + "'";
+    }
+
+    void showLinuxShell() {
+        final Dialog d=new Dialog(this);
+
+        LinearLayout box=new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(dp(15),dp(15),dp(15),dp(15));
+        box.setBackgroundColor(Color.rgb(8,8,10));
+
+        TextView title=tv("Debian Terminal",20);
+        title.setTypeface(Typeface.MONOSPACE,Typeface.BOLD);
+        box.addView(title,new LinearLayout.LayoutParams(-1,dp(45)));
+
+        ScrollView scroll=new ScrollView(this);
+        TextView output=tv("root@debian:~$ Connected\\n",13);
+        output.setTypeface(Typeface.MONOSPACE);
+        output.setTextColor(Color.WHITE);
+        scroll.addView(output);
+
+        box.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
+
+        EditText command=new EditText(this);
+        command.setHint("Enter Debian command");
+        command.setHintTextColor(GRAY);
+        command.setTextColor(Color.WHITE);
+        command.setSingleLine(true);
+        command.setTypeface(Typeface.MONOSPACE);
+
+        box.addView(command,new LinearLayout.LayoutParams(-1,dp(55)));
+
+        Button run=btn("Run");
+        box.addView(run,new LinearLayout.LayoutParams(-1,dp(55)));
+
+        run.setOnClickListener(v -> {
+            String cmd=command.getText().toString().trim();
+            if(cmd.length()==0) return;
+
+            output.append("\\nroot@debian:~$ "+cmd+"\\n");
+            command.setText("");
+
+            runLinuxCommand(cmd,result -> {
+                output.append(result+"\\n");
+                scroll.post(() -> scroll.fullScroll(View.FOCUS_DOWN));
+            });
+        });
+
+        d.setContentView(box);
+        d.show();
+
+        if(d.getWindow()!=null)
+            d.getWindow().setLayout(dp(700),dp(600));
+    }
+
+    void showLinuxApps() {
+        runLinuxCommand(
+            "find /usr/share/applications -name '*.desktop' -type f 2>/dev/null | sort | head -100",
+            result -> {
+                final Dialog d=new Dialog(this);
+
+                LinearLayout box=new LinearLayout(this);
+                box.setOrientation(LinearLayout.VERTICAL);
+                box.setPadding(dp(20),dp(20),dp(20),dp(20));
+                box.setBackgroundColor(PANEL);
+
+                TextView title=tv("Debian Applications",21);
+                title.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
+                box.addView(title,new LinearLayout.LayoutParams(-1,dp(55)));
+
+                ScrollView scroll=new ScrollView(this);
+                TextView list=tv(result,13);
+                list.setTypeface(Typeface.MONOSPACE);
+                scroll.addView(list);
+
+                box.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
+
+                Button close=btn("Close");
+                close.setOnClickListener(v -> d.dismiss());
+                box.addView(close,new LinearLayout.LayoutParams(-1,dp(55)));
+
+                d.setContentView(box);
+                d.show();
+
+                if(d.getWindow()!=null)
+                    d.getWindow().setLayout(dp(700),dp(600));
+            });
     }
 
     void settings() {
