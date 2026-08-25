@@ -9,7 +9,8 @@
         android:allowBackup="false"
         android:label="METMC OS"
         android:theme="@style/Theme.METMCOS"
-        android:supportsRtl="true">
+        android:supportsRtl="true"
+        android:resizeableActivity="true">
 
         <activity
             android:name=".MainActivity"

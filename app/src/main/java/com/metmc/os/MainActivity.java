@@ -1,5 +1,7 @@
 package com.metmc.os;
 
+import com.metmc.os.desktop.AndroidWindowLauncher;
+
 import android.app.*;
 import android.os.*;
 import android.content.*;
@@ -300,8 +302,12 @@ public class MainActivity extends Activity {
                 try {
                     Intent launch=pm.getLaunchIntentForPackage(
                         info.activityInfo.packageName);
-                    if(launch!=null) startActivity(launch);
-                    d.dismiss();
+                    if(launch!=null) {
+                        AndroidWindowLauncher.launch(
+                            MainActivity.this,
+                            info.activityInfo.packageName
+                        );
+                    }
                 } catch(Exception e) {
                     panel("Launch error",e.toString());
                 }
