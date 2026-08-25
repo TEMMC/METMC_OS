@@ -62,6 +62,7 @@ public final class LinuxGuiLauncher {
     }
 
     private static String quote(String value) {
-        return " + value.replace(", "\) + ";
+        return "'" + value.replace("'", "'\\''") + "'";
     }
+
 }
