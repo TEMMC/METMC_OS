@@ -61,21 +61,66 @@ public class MainActivity extends Activity {
     }
 
     // Central root executor for ALL METMC OS Debian/Linux features.
+
+
+
+
+
+
+    // Central Android root executor.
+    // All privileged METMC operations should use this layer.
     java.lang.Process rootProcess(String command) throws Exception {
-        return new ProcessBuilder(
-            "su", "-c", command
-        ).redirectErrorStream(true).start();
+        String[] suPaths = {
+            "/system/bin/su",
+            "/system/xbin/su",
+            "/sbin/su",
+            "/debug_ramdisk/su"
+        };
+
+        Exception last = null;
+
+        for (String su : suPaths) {
+            try {
+                java.lang.Process p = new ProcessBuilder(
+                    su,
+                    "-c",
+                    command
+                ).redirectErrorStream(true).start();
+
+                return p;
+            } catch (Exception e) {
+                last = e;
+            }
+        }
+
+        throw new java.io.IOException(
+            "Unable to start Android root shell: " +
+            (last == null ? "su not found" : last.getMessage())
+        );
     }
 
     boolean hasRootAccess() {
         try {
             java.lang.Process p = rootProcess("id");
-            java.io.BufferedReader r = new java.io.BufferedReader(
-                new java.io.InputStreamReader(p.getInputStream())
-            );
-            String out = r.readLine();
-            p.waitFor();
-            return out != null && out.contains("uid=0");
+
+            java.io.BufferedReader reader =
+                new java.io.BufferedReader(
+                    new java.io.InputStreamReader(
+                        p.getInputStream()
+                    )
+                );
+
+            StringBuilder output = new StringBuilder();
+            String line;
+
+            while ((line = reader.readLine()) != null) {
+                output.append(line).append('\n');
+            }
+
+            int code = p.waitFor();
+
+            return code == 0 &&
+                   output.toString().contains("uid=0");
         } catch (Exception e) {
             return false;
         }
@@ -83,18 +128,33 @@ public class MainActivity extends Activity {
 
     String runRoot(String command) throws Exception {
         java.lang.Process p = rootProcess(command);
-        java.io.BufferedReader r = new java.io.BufferedReader(
-            new java.io.InputStreamReader(p.getInputStream())
-        );
-        StringBuilder out = new StringBuilder();
+
+        java.io.BufferedReader reader =
+            new java.io.BufferedReader(
+                new java.io.InputStreamReader(
+                    p.getInputStream()
+                )
+            );
+
+        StringBuilder output = new StringBuilder();
         String line;
-        while ((line = r.readLine()) != null) {
-            out.append(line).append('\n');
+
+        while ((line = reader.readLine()) != null) {
+            output.append(line).append('\n');
         }
+
         int code = p.waitFor();
-        if (code != 0)
-            throw new java.io.IOException("Root command failed (" + code + "): " + out);
-        return out.toString();
+
+        if (code != 0) {
+            throw new java.io.IOException(
+                "Root command failed (" +
+                code +
+                "):\n" +
+                output
+            );
+        }
+
+        return output.toString();
     }
 
     void build() {
