@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.os.Bundle;
 import android.graphics.Color;
 import android.graphics.Typeface;
+import android.view.KeyEvent;
 import android.view.View;
 import android.widget.*;
 
@@ -14,14 +15,18 @@ public class LinuxTerminalActivity extends Activity {
     private TextView output;
     private EditText command;
 
+    private Process shell;
+    private BufferedWriter shellIn;
+    private BufferedReader shellOut;
+
     @Override
     protected void onCreate(Bundle state) {
         super.onCreate(state);
 
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setBackgroundColor(Color.rgb(8,8,10));
-        root.setPadding(12,12,12,12);
+        root.setBackgroundColor(Color.rgb(8, 8, 10));
+        root.setPadding(12, 12, 12, 12);
 
         TextView title = new TextView(this);
         title.setText("METMC Linux Terminal");
@@ -30,7 +35,7 @@ public class LinuxTerminalActivity extends Activity {
         title.setTypeface(Typeface.MONOSPACE, Typeface.BOLD);
 
         root.addView(title,
-            new LinearLayout.LayoutParams(-1,60));
+                new LinearLayout.LayoutParams(-1, 60));
 
         ScrollView scroll = new ScrollView(this);
 
@@ -38,12 +43,11 @@ public class LinuxTerminalActivity extends Activity {
         output.setTextColor(Color.WHITE);
         output.setTypeface(Typeface.MONOSPACE);
         output.setTextSize(13);
-        output.setText("root@metmc:~$ Connected\n\n");
-
+        output.setText("METMC Linux Terminal\n");
         scroll.addView(output);
 
         root.addView(scroll,
-            new LinearLayout.LayoutParams(-1,0,1));
+                new LinearLayout.LayoutParams(-1, 0, 1));
 
         LinearLayout row = new LinearLayout(this);
 
@@ -58,83 +62,102 @@ public class LinuxTerminalActivity extends Activity {
         run.setText("Run");
 
         row.addView(command,
-            new LinearLayout.LayoutParams(0,60,1));
+                new LinearLayout.LayoutParams(0, 60, 1));
 
         row.addView(run,
-            new LinearLayout.LayoutParams(150,60));
+                new LinearLayout.LayoutParams(150, 60));
 
         root.addView(row);
 
         setContentView(root);
 
-        run.setOnClickListener(v -> execute());
-        command.setOnEditorActionListener((v,a,e) -> {
-            execute();
+        startShell();
+
+        run.setOnClickListener(v -> sendCommand());
+
+        command.setOnEditorActionListener((v, actionId, event) -> {
+            sendCommand();
             return true;
         });
     }
 
-    private void execute() {
-        String cmd = command.getText().toString().trim();
-
-        if (cmd.isEmpty())
-            return;
-
-        output.append(
-            "\nroot@metmc:~$ " + cmd + "\n"
-        );
-
-        command.setText("");
-
+    private void startShell() {
         new Thread(() -> {
-            String result;
-
             try {
-                Process p = new ProcessBuilder(
-                    "su", "-c",
-                    "chroot /data/local/linux/rootfs " +
-                    "/bin/bash -lc " +
-                    quote(
-                        "export HOME=/root; " +
-                        "export DISPLAY=:100; " +
-                        "export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin; " +
-                        cmd
-                    )
+                shell = new ProcessBuilder(
+                        "su",
+                        "-c",
+                        "chroot /data/local/linux/rootfs /bin/bash"
                 ).redirectErrorStream(true).start();
 
-                result = read(p.getInputStream());
-                p.waitFor();
+                shellIn = new BufferedWriter(
+                        new OutputStreamWriter(shell.getOutputStream())
+                );
+
+                shellOut = new BufferedReader(
+                        new InputStreamReader(shell.getInputStream())
+                );
+
+                shellIn.write(
+                        "export HOME=/root\n" +
+                        "export USER=root\n" +
+                        "export TERM=xterm-256color\n" +
+                        "export DISPLAY=:100\n" +
+                        "export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\n" +
+                        "cd /root\n" +
+                        "PS1='root@metmc:\\w# '\n"
+                );
+                shellIn.flush();
+
+                char[] buffer = new char[4096];
+                int count;
+
+                while ((count = shellOut.read(buffer)) != -1) {
+                    final String text = new String(buffer, 0, count);
+
+                    runOnUiThread(() -> {
+                        output.append(text);
+                    });
+                }
 
             } catch (Exception e) {
-                result = "ERROR: " + e + "\n";
+                runOnUiThread(() ->
+                        output.append("\n[Shell error] " + e + "\n")
+                );
             }
-
-            final String r = result;
-
-            runOnUiThread(() -> {
-                output.append(r + "\n");
-                output.append("root@metmc:~$ ");
-            });
-
         }).start();
     }
 
-    private static String read(InputStream in)
-            throws IOException {
+    private void sendCommand() {
+        String cmd = command.getText().toString();
 
-        ByteArrayOutputStream out =
-            new ByteArrayOutputStream();
+        if (cmd.isEmpty() || shellIn == null)
+            return;
 
-        byte[] buf = new byte[4096];
-        int n;
+        try {
+            shellIn.write(cmd);
+            shellIn.newLine();
+            shellIn.flush();
 
-        while ((n = in.read(buf)) != -1)
-            out.write(buf,0,n);
+            command.setText("");
 
-        return out.toString("UTF-8");
+        } catch (Exception e) {
+            output.append("\n[Write error] " + e + "\n");
+        }
     }
 
-    private static String quote(String s) {
-        return "'" + s.replace("'", "'\\''") + "'";
+    @Override
+    protected void onDestroy() {
+        try {
+            if (shellIn != null) {
+                shellIn.write("exit\n");
+                shellIn.flush();
+            }
+        } catch (Exception ignored) {}
+
+        if (shell != null)
+            shell.destroy();
+
+        super.onDestroy();
     }
 }
