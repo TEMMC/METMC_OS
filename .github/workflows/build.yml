@@ -1,25 +1,20 @@
-name: Build METMC OS v6
+name: Build METMC OS
 
 on:
-  workflow_dispatch:
   push:
-    branches:
-      - main
-      - master
-
-permissions:
-  contents: read
+    branches: [main]
+  workflow_dispatch:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
-      - name: Checkout METMC OS
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Set up Java 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
@@ -30,27 +25,21 @@ jobs:
 
       - name: Install Android SDK
         run: |
+          yes | sdkmanager --licenses >/dev/null || true
           sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
-          yes | sdkmanager --licenses || true
 
-      - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '8.10'
+      - name: Make Gradle executable
+        run: chmod +x gradlew
 
-      - name: Generate Gradle Wrapper
-        run: |
-          gradle wrapper --gradle-version 8.10
-          chmod +x ./gradlew
+      - name: Clean
+        run: ./gradlew clean --no-daemon
 
-      - name: Build METMC OS v6
-        run: |
-          ./gradlew assembleDebug --stacktrace --no-daemon
+      - name: Build METMC OS
+        run: ./gradlew assembleDebug --stacktrace --no-daemon
 
-      - name: Upload METMC OS v6 APK
+      - name: Upload APK
+        if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: METMC-OS-v6-debug
+          name: METMC-OS-debug
           path: app/build/outputs/apk/debug/*.apk
-          if-no-files-found: error
-          retention-days: 14
