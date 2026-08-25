@@ -1,11 +1,11 @@
 cmake_minimum_required(VERSION 3.22.1)
 
-project("metmc_display")
+project(metmc_display)
 
 add_library(
     metmc_display
     SHARED
-    metmc_display_bridge.cpp
+    display/metmc_display.cpp
 )
 
 find_library(
@@ -22,4 +22,10 @@ target_link_libraries(
     metmc_display
     ${log-lib}
     ${android-lib}
+)
+
+target_compile_features(
+    metmc_display
+    PRIVATE
+    cxx_std_17
 )
