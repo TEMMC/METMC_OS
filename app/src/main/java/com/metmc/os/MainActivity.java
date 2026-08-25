@@ -334,7 +334,7 @@ public class MainActivity extends Activity {
 
     boolean hasRoot() {
         try {
-            java.lang.java.lang.java.lang.Process p = new ProcessBuilder("su","-c","id").start();
+            java.lang.Process p = new ProcessBuilder("su","-c","id").start();
             return p.waitFor() == 0;
         } catch(Exception e) {
             return false;
@@ -488,29 +488,7 @@ public class MainActivity extends Activity {
         }
     }
 
-    String runRoot(String command) throws Exception {
-        java.lang.java.lang.java.lang.Process p = new ProcessBuilder(
-            "su","-c",command)
-            .redirectErrorStream(true)
-            .start();
 
-        BufferedReader r = new BufferedReader(
-            new InputStreamReader(p.getInputStream()));
-
-        StringBuilder out = new StringBuilder();
-        String line;
-
-        while((line=r.readLine())!=null)
-            out.append(line).append("\\n");
-
-        int code=p.waitFor();
-
-        if(code != 0)
-            throw new IOException(
-                "Root command failed (" + code + "):\\n" + out);
-
-        return out.toString();
-    }
 
     String shellQuote(String s) {
         return "'" + s.replace("'","'\\\\''") + "'";
