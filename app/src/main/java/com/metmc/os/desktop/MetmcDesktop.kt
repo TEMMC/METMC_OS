@@ -214,7 +214,8 @@ class MetmcDesktop(
 
         addLauncherItem(
             box,
-        ) {            "
+            "🖼  Change Wallpaper"
+        ) {
             chooseWallpaper()
         }
 
