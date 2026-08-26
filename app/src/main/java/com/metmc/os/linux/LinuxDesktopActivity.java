@@ -39,9 +39,13 @@ public class LinuxDesktopActivity extends Activity {
         root.addView(taskbar,tp);
         setContentView(root);
 
+        // Single METMC OS taskbar.
+        taskbar.removeAllViews();
+
         addTaskButton("☰",v->showStartMenu());
         addTaskButton("Terminal",v->openTerminal());
         addTaskButton("Files",v->openFiles());
+
         loadLinuxApps();
     }
 
