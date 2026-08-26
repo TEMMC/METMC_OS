@@ -200,26 +200,20 @@ public class LinuxDesktopActivity extends Activity {
 
                 runOnUiThread(() -> {
 
-                    TextView status =
-                            new TextView(this);
-
-                    status.setText(
-                            name +
-                            "\\nLinux application started on DISPLAY=:100");
-
-                    status.setTextColor(Color.WHITE);
-                    status.setPadding(20,20,20,20);
-                    status.setBackgroundColor(Color.BLACK);
+                    LinuxDisplayView display =
+                            new LinuxDisplayView(this);
 
                     DesktopWindow window =
                             new DesktopWindow(
                                     this,
                                     desktop,
                                     name,
-                                    status);
+                                    display);
 
                     desktop.addView(window);
                     window.bringToFront();
+
+                    display.start();
                 });
 
             } catch (Exception e) {
