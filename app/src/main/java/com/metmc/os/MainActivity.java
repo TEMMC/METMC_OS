@@ -718,10 +718,153 @@ public class MainActivity extends Activity {
     }
 
     void showLinuxApps() {
-        runLinuxCommand(
-            "find /usr/share/applications -name '*.desktop' " +
-            "-type f 2>/dev/null | sort | head -100",
-            result -> panel("Debian Applications",result));
+        new Thread(() -> {
+            try {
+                String result = runLinuxCommandSync(
+                    "find /usr/share/applications -name '*.desktop' -type f 2>/dev/null | sort"
+                );
+
+                String[] files = result.split("\\n");
+
+                runOnUiThread(() -> {
+                    final Dialog d = new Dialog(this);
+
+                    LinearLayout box = new LinearLayout(this);
+                    box.setOrientation(LinearLayout.VERTICAL);
+                    box.setPadding(dp(16),dp(16),dp(16),dp(16));
+                    box.setBackgroundColor(PANEL);
+
+                    TextView title = tv("🐧 Debian Applications",22);
+                    title.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
+                    box.addView(title,
+                        new LinearLayout.LayoutParams(-1,dp(55)));
+
+                    ScrollView scroll = new ScrollView(this);
+                    LinearLayout list = new LinearLayout(this);
+                    list.setOrientation(LinearLayout.VERTICAL);
+
+                    int count = 0;
+
+                    for(String file : files) {
+                        if(file.trim().isEmpty())
+                            continue;
+
+                        try {
+                            String data = runLinuxCommandSync(
+                                "cat " + shellQuote(file)
+                            );
+
+                            String name = desktopValue(data,"Name");
+                            String exec = desktopValue(data,"Exec");
+
+                            if(name == null || name.trim().isEmpty())
+                                continue;
+
+                            if(exec == null || exec.trim().isEmpty())
+                                continue;
+
+                            final String appName = name.trim();
+                            final String appExec = exec.trim();
+
+                            Button app = btn("▣  " + appName);
+                            app.setGravity(
+                                Gravity.LEFT | Gravity.CENTER_VERTICAL);
+
+                            app.setOnClickListener(v -> {
+                                LinuxGuiLauncher.launch(
+                                    MainActivity.this,
+                                    METMC_ROOTFS,
+                                    "export DISPLAY=:100; " +
+                                    "export XDG_RUNTIME_DIR=/tmp/metmc-runtime; " +
+                                    "mkdir -p /tmp/metmc-runtime; " +
+                                    "chmod 700 /tmp/metmc-runtime; " +
+                                    appExec +
+                                    " >/tmp/metmc-" +
+                                    shellQuote(appName)
+                                    + ".log 2>&1 &"
+                                );
+
+                                Toast.makeText(
+                                    MainActivity.this,
+                                    "Opening " + appName,
+                                    Toast.LENGTH_SHORT
+                                ).show();
+                            });
+
+                            list.addView(
+                                app,
+                                new LinearLayout.LayoutParams(
+                                    -1,dp(58)));
+
+                            count++;
+
+                        } catch(Exception ignored) {
+                        }
+                    }
+
+                    if(count == 0) {
+                        TextView empty = tv(
+                            "No Debian applications found.\\n\\n" +
+                            "Check that /usr/share/applications " +
+                            "contains .desktop files.",
+                            15);
+                        empty.setPadding(
+                            dp(10),dp(20),dp(10),dp(20));
+                        list.addView(empty);
+                    }
+
+                    scroll.addView(list);
+
+                    box.addView(
+                        scroll,
+                        new LinearLayout.LayoutParams(
+                            -1,0,1));
+
+                    Button close = btn("Close");
+                    close.setOnClickListener(v -> d.dismiss());
+
+                    box.addView(
+                        close,
+                        new LinearLayout.LayoutParams(
+                            -1,dp(55)));
+
+                    d.setContentView(box);
+                    d.show();
+
+                    if(d.getWindow()!=null)
+                        d.getWindow().setLayout(
+                            dp(700),dp(600));
+                });
+
+            } catch(Exception e) {
+                runOnUiThread(() ->
+                    panel("Debian Applications",
+                        "ERROR: " + e));
+            }
+        }).start();
+    }
+
+    String runLinuxCommandSync(String command) throws Exception {
+        String full =
+            "export HOME=/root; " +
+            "export USER=root; " +
+            "export LANG=C.UTF-8; " +
+            "export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin; " +
+            "export DISPLAY=:100; " +
+            "test -x " + shellQuote(METMC_ROOTFS + "/bin/bash") +
+            " && chroot " + shellQuote(METMC_ROOTFS) +
+            " /bin/bash -lc " +
+            shellQuote(command);
+
+        return runRoot(full);
+    }
+
+    String desktopValue(String data,String key) {
+        for(String line : data.split("\\n")) {
+            if(line.startsWith(key + "="))
+                return line.substring(key.length()+1);
+        }
+        return null;
     }
 
     void settings() {
