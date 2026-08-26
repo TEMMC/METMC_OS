@@ -7,6 +7,7 @@ import android.graphics.Color;
 import android.graphics.Rect;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
+import android.view.MotionEvent;
 
 import java.io.BufferedInputStream;
 import java.io.InputStream;
@@ -244,6 +245,47 @@ public class LinuxDisplayView extends SurfaceView
         }
 
         return pixels;
+    }
+
+    @Override
+    public boolean onTouchEvent(MotionEvent event) {
+        if (event.getAction() == MotionEvent.ACTION_DOWN ||
+            event.getAction() == MotionEvent.ACTION_MOVE ||
+            event.getAction() == MotionEvent.ACTION_UP) {
+
+            final float x = event.getX() / Math.max(1f, getWidth()) * X11_WIDTH;
+            final float y = event.getY() / Math.max(1f, getHeight()) * X11_HEIGHT;
+
+            String action;
+
+            if (event.getAction() == MotionEvent.ACTION_DOWN)
+                action = "mousemove " + (int)x + " " + (int)y + " click 1";
+            else if (event.getAction() == MotionEvent.ACTION_UP)
+                action = "mousemove " + (int)x + " " + (int)y;
+            else
+                action = "mousemove " + (int)x + " " + (int)y;
+
+            new Thread(() -> {
+                try {
+                    String cmd =
+                            "export DISPLAY=:100; " +
+                            "export HOME=/root; " +
+                            "command -v xdotool >/dev/null 2>&1 && " +
+                            "xdotool " + action;
+
+                    new ProcessBuilder(
+                            "su", "-c",
+                            "chroot /data/local/linux/rootfs /bin/bash -lc " +
+                            quote(cmd)
+                    ).start();
+                } catch (Exception ignored) {
+                }
+            }).start();
+
+            return true;
+        }
+
+        return true;
     }
 
     @Override
