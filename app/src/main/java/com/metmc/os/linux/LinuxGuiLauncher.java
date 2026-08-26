@@ -22,10 +22,17 @@ public final class LinuxGuiLauncher {
                         "export HOME=/root; " +
                         "export USER=root; " +
                         "export LANG=C.UTF-8; " +
-                        "export DISPLAY=${DISPLAY:-:0}; " +
+                        "export DISPLAY=:100; " +
                         "export XDG_RUNTIME_DIR=/tmp/metmc-runtime; " +
                         "mkdir -p \"$XDG_RUNTIME_DIR\"; " +
                         "chmod 700 \"$XDG_RUNTIME_DIR\"; " +
+                        "export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin; " +
+                        "if ! pgrep -x openbox >/dev/null 2>&1; then " +
+                        "mkdir -p /tmp/metmc-openbox; " +
+                        "nohup openbox --replace " +
+                        ">/tmp/metmc-openbox/openbox.log 2>&1 & " +
+                        "sleep 1; " +
+                        "fi; " +
                         "cd /root; " +
                         command;
 
