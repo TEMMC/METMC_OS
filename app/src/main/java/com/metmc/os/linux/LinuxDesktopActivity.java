@@ -1,5 +1,7 @@
 package com.metmc.os.linux;
 
+import android.content.Intent;
+
 import android.app.*;
 import android.os.*;
 import android.graphics.Color;
@@ -122,7 +124,7 @@ public class LinuxDesktopActivity extends Activity {
         new Thread(()->{
             try{
                 String cmd="find /usr/share/applications -type f -name '*.desktop' 2>/dev/null | sort";
-                Process p=new ProcessBuilder("su","-c",
+                java.lang.Process p=new ProcessBuilder("su","-c",
                         "chroot /data/local/linux/rootfs /bin/bash -lc "+quote(cmd))
                         .redirectErrorStream(true).start();
                 BufferedReader r=new BufferedReader(new InputStreamReader(p.getInputStream()));
@@ -144,7 +146,7 @@ public class LinuxDesktopActivity extends Activity {
     private String desktopName(String file){
         try{
             String cmd="grep -m1 '^Name=' "+quote(file)+" | cut -d= -f2-";
-            Process p=new ProcessBuilder("su","-c",
+            java.lang.Process p=new ProcessBuilder("su","-c",
                     "chroot /data/local/linux/rootfs /bin/bash -lc "+quote(cmd))
                     .redirectErrorStream(true).start();
             BufferedReader r=new BufferedReader(new InputStreamReader(p.getInputStream()));
@@ -217,7 +219,7 @@ public class LinuxDesktopActivity extends Activity {
             new Thread(()->{
                 try{
                     String full="export HOME=/root; export DISPLAY=:100; "+cmd;
-                    Process p=new ProcessBuilder("su","-c",
+                    java.lang.Process p=new ProcessBuilder("su","-c",
                             "chroot /data/local/linux/rootfs /bin/bash -lc "+quote(full))
                             .redirectErrorStream(true).start();
                     BufferedReader r=new BufferedReader(new InputStreamReader(p.getInputStream()));
