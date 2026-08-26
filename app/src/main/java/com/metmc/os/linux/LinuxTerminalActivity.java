@@ -96,10 +96,20 @@ public class LinuxTerminalActivity extends Activity {
     private void startShell() {
         new Thread(() -> {
             try {
+                String cmd =
+                        "export HOME=/root; " +
+                        "export USER=root; " +
+                        "export TERM=xterm-256color; " +
+                        "export DISPLAY=:100; " +
+                        "export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin; " +
+                        "cd /root; " +
+                        "exec script -qfec '/bin/bash --noprofile --norc -i' /dev/null";
+
                 shell = new ProcessBuilder(
                         "su",
                         "-c",
-                        "chroot /data/local/linux/rootfs /bin/bash -i"
+                        "chroot /data/local/linux/rootfs /bin/bash -c " +
+                                quoteShell(cmd)
                 ).redirectErrorStream(true).start();
 
                 shellIn = new BufferedWriter(
@@ -111,13 +121,7 @@ public class LinuxTerminalActivity extends Activity {
                 );
 
                 shellIn.write(
-                        "export HOME=/root\n" +
-                        "export USER=root\n" +
-                        "export TERM=xterm-256color\n" +
-                        "export DISPLAY=:100\n" +
-                        "export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\n" +
-                        "cd /root\n" +
-                        "PS1='root@metmc:\\w# '; export PS1\n"
+                        "export PS1='root@debian:\\w# '\n"
                 );
                 shellIn.flush();
 
@@ -129,15 +133,20 @@ public class LinuxTerminalActivity extends Activity {
 
                     runOnUiThread(() -> {
                         output.append(text);
+                        output.invalidate();
                     });
                 }
 
             } catch (Exception e) {
                 runOnUiThread(() ->
-                        output.append("\n[Shell error] " + e + "\n")
+                        output.append("\n[Terminal error] " + e + "\n")
                 );
             }
         }).start();
+    }
+
+    private String quoteShell(String value) {
+        return "'" + value.replace("'", "'\\''") + "'";
     }
 
     private void sendCommand() {
