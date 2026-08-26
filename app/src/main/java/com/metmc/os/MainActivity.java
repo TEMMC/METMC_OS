@@ -688,11 +688,19 @@ public class MainActivity extends Activity {
             try {
                 String full =
                     "export HOME=/root; " +
+                    "export USER=root; " +
+                    "export LANG=C.UTF-8; " +
                     "export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin; " +
-                    "export LANG=C; " +
-                    "chroot " + shellQuote(METMC_ROOTFS) +
+                    "export DISPLAY=:100; " +
+                    "test -x " + shellQuote(METMC_ROOTFS + "/bin/bash") +
+                    " && chroot " + shellQuote(METMC_ROOTFS) +
                     " /bin/bash -lc " +
-                    shellQuote(command);
+                    shellQuote(
+                        "export HOME=/root; " +
+                        "export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin; " +
+                        "export DISPLAY=:100; " +
+                        command
+                    );
 
                 result=runRoot(full);
 
