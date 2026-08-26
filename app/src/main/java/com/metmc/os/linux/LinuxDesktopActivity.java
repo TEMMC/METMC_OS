@@ -214,7 +214,7 @@ public class LinuxDesktopActivity extends Activity {
         command.setOnEditorActionListener((v,a,e)->{
             String cmd=command.getText().toString().trim();
             if(cmd.isEmpty())return true;
-            output.append(cmd+"\\n");
+            output.append(cmd+"\n");
             command.setText("");
             new Thread(()->{
                 try{
@@ -228,7 +228,7 @@ public class LinuxDesktopActivity extends Activity {
                     while((line=r.readLine())!=null)out.append(line).append('\n');
                     p.waitFor();
                     runOnUiThread(()->output.append(out.toString()+"root@debian:~$ "));
-                }catch(Exception ex){runOnUiThread(()->output.append(ex+"\\n"));}}
+                }catch(Exception ex){runOnUiThread(()->output.append(ex+"\n"));}}
             ).start();
             return true;
         });
