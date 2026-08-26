@@ -123,23 +123,72 @@ public class LinuxDesktopActivity extends Activity {
     private void loadLinuxApps(){
         new Thread(()->{
             try{
-                String cmd="find /usr/share/applications -type f -name '*.desktop' 2>/dev/null | sort";
-                java.lang.Process p=new ProcessBuilder("su","-c",
-                        "chroot /data/local/linux/rootfs /bin/bash -lc "+quote(cmd))
-                        .redirectErrorStream(true).start();
-                BufferedReader r=new BufferedReader(new InputStreamReader(p.getInputStream()));
-                ArrayList<String> files=new ArrayList<>();
+                String cmd =
+                        "export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin; " +
+                        "for f in /usr/share/applications/*.desktop; do " +
+                        "[ -f \"$f\" ] || continue; " +
+                        "name=$(grep -m1 '^Name=' \"$f\" | cut -d= -f2-); " +
+                        "[ -n \"$name\" ] || continue; " +
+                        "printf '%s|%s\\n' \"$f\" \"$name\"; " +
+                        "done";
+
+                java.lang.Process p = new ProcessBuilder(
+                        "su",
+                        "-c",
+                        "chroot /data/local/linux/rootfs /bin/bash -c " + quote(cmd)
+                ).redirectErrorStream(true).start();
+
+                BufferedReader r = new BufferedReader(
+                        new InputStreamReader(p.getInputStream())
+                );
+
+                ArrayList<String[]> apps = new ArrayList<>();
                 String line;
-                while((line=r.readLine())!=null)if(!line.trim().isEmpty())files.add(line.trim());
+
+                while((line = r.readLine()) != null){
+                    if(line.trim().isEmpty()) continue;
+
+                    String[] parts = line.split("\\|", 2);
+
+                    if(parts.length == 2){
+                        apps.add(parts);
+                    }
+                }
+
                 p.waitFor();
+
                 runOnUiThread(()->{
-                    for(String f:files){
-                        String n=desktopName(f);
-                        if(n==null||n.trim().isEmpty())continue;
-                        addTaskButton(n,v->launchDesktopFile(f,n));
+                    if(apps.isEmpty()){
+                        new AlertDialog.Builder(this)
+                                .setTitle("🐧 Debian Applications")
+                                .setMessage(
+                                        "No Debian applications found.\\n\\n" +
+                                        "Check that /usr/share/applications " +
+                                        "contains .desktop files."
+                                )
+                                .setPositiveButton("OK", null)
+                                .show();
+                        return;
+                    }
+
+                    for(String[] app : apps){
+                        String file = app[0];
+                        String name = app[1];
+
+                        addTaskButton(
+                                name,
+                                v -> launchDesktopFile(file, name)
+                        );
                     }
                 });
-            }catch(Exception e){}
+
+            }catch(Exception e){
+                runOnUiThread(()->new AlertDialog.Builder(this)
+                        .setTitle("🐧 Debian Applications")
+                        .setMessage("Application scan failed:\\n\\n" + e)
+                        .setPositiveButton("OK", null)
+                        .show());
+            }
         }).start();
     }
 
