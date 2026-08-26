@@ -2,24 +2,23 @@ package com.metmc.os.desktop
 
 import android.app.Activity
 import android.content.Context
+import android.content.Intent
 import android.graphics.Color
+import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.GradientDrawable
 import android.net.Uri
 import android.view.Gravity
+import android.view.MotionEvent
 import android.view.View
 import android.widget.*
-import java.io.InputStream
+import com.metmc.os.linux.LinuxDesktopActivity
 
-class MetmcDesktop(
-    context: Context
-) : FrameLayout(context) {
+class MetmcDesktop(context: Context) : FrameLayout(context) {
 
     private val activity = context as? Activity
 
     private val desktopArea = FrameLayout(context)
-
     private val taskbar = LinearLayout(context)
-
     private val windows = ArrayList<View>()
 
     private var wallpaperUri: Uri? = null
@@ -29,12 +28,9 @@ class MetmcDesktop(
     }
 
     private fun buildDesktop() {
-
         setBackgroundColor(Color.rgb(10, 12, 18))
 
-        desktopArea.setBackgroundColor(
-            Color.rgb(10, 12, 18)
-        )
+        desktopArea.setBackgroundColor(Color.rgb(10, 12, 18))
 
         addView(
             desktopArea,
@@ -45,38 +41,32 @@ class MetmcDesktop(
         )
 
         createDesktopContent()
-
         createTaskbar()
     }
 
     private fun createDesktopContent() {
-
         val center = LinearLayout(context)
-
         center.orientation = LinearLayout.VERTICAL
         center.gravity = Gravity.CENTER
 
         val title = TextView(context)
-
         title.text = "METMC OS"
         title.textSize = 36f
         title.setTextColor(Color.WHITE)
         title.gravity = Gravity.CENTER
 
         val subtitle = TextView(context)
-
-        subtitle.text = "Android + Linux Desktop"
+        subtitle.text = "Android + Debian Linux Desktop"
         subtitle.textSize = 17f
         subtitle.setTextColor(Color.LTGRAY)
         subtitle.gravity = Gravity.CENTER
 
         center.addView(title)
-
         center.addView(
             subtitle,
             LinearLayout.LayoutParams(
                 LayoutParams.MATCH_PARENT,
-                60
+                dp(60)
             )
         )
 
@@ -90,62 +80,38 @@ class MetmcDesktop(
     }
 
     private fun createTaskbar() {
+        taskbar.removeAllViews()
 
         taskbar.orientation = LinearLayout.HORIZONTAL
         taskbar.gravity = Gravity.CENTER_VERTICAL
-
-        taskbar.setPadding(
-            dp(8),
-            dp(6),
-            dp(8),
-            dp(6)
-        )
-
-        taskbar.setBackgroundColor(
-            Color.rgb(25, 27, 34)
-        )
+        taskbar.setPadding(dp(6), dp(4), dp(6), dp(4))
+        taskbar.setBackgroundColor(Color.rgb(25, 27, 34))
 
         val params = LayoutParams(
             LayoutParams.MATCH_PARENT,
-            dp(64)
+            dp(60)
         )
-
         params.gravity = Gravity.BOTTOM
 
         addView(taskbar, params)
 
-        addTaskButton(
-            "◈",
-            "METMC Launcher"
-        ) {
+        addTaskButton("◈", "METMC Launcher") {
             showLauncher()
         }
 
-        addTaskButton(
-            "🐧",
-            "Linux"
-        ) {
-            createLinuxWindow()
+        addTaskButton("🐧", "Debian Linux") {
+            openLinuxDesktop()
         }
 
-        addTaskButton(
-            "📱",
-            "Android"
-        ) {
+        addTaskButton("▣", "Android") {
             createAndroidWindow()
         }
 
-        addTaskButton(
-            "🖼",
-            "Wallpaper"
-        ) {
+        addTaskButton("🖼", "Wallpaper") {
             chooseWallpaper()
         }
 
-        addTaskButton(
-            "⚙",
-            "Settings"
-        ) {
+        addTaskButton("⚙", "Settings") {
             createSettingsWindow()
         }
     }
@@ -155,74 +121,49 @@ class MetmcDesktop(
         description: String,
         action: () -> Unit
     ) {
-
         val button = Button(context)
 
         button.text = icon
-        button.textSize = 20f
-
+        button.textSize = 19f
         button.setTextColor(Color.WHITE)
+        button.setAllCaps(false)
+        button.contentDescription = description
 
         button.setOnClickListener {
             action()
         }
 
-        button.contentDescription = description
-
         taskbar.addView(
             button,
             LinearLayout.LayoutParams(
-                dp(62),
-                dp(52)
+                dp(58),
+                dp(50)
             )
         )
     }
 
     private fun showLauncher() {
-
         val box = LinearLayout(context)
-
         box.orientation = LinearLayout.VERTICAL
+        box.setPadding(dp(10), dp(10), dp(10), dp(10))
 
-        val title = TextView(context)
-
-        title.text = "METMC Launcher"
-        title.textSize = 22f
-        title.setTextColor(Color.WHITE)
-        title.setPadding(
-            dp(16),
-            dp(12),
-            dp(16),
-            dp(12)
-        )
-
-        box.addView(title)
-
-        addLauncherItem(
-            box,
-            "🐧  Debian / Linux"
-        ) {
-            createLinuxWindow()
+        addLauncherItem(box, "🐧  Debian / Linux") {
+            openLinuxDesktop()
         }
 
-        addLauncherItem(
-            box,
-            "📱  Android Applications"
-        ) {
+        addLauncherItem(box, "📱  Android Applications") {
             createAndroidWindow()
         }
 
-        addLauncherItem(
-            box,
-            "🖼  Change Wallpaper"
-        ) {
+        addLauncherItem(box, "🖼  Change Wallpaper") {
             chooseWallpaper()
         }
 
-        createWindow(
-            "METMC Launcher",
-            box
-        )
+        addLauncherItem(box, "⚙  Settings") {
+            createSettingsWindow()
+        }
+
+        createWindow("METMC Launcher", box)
     }
 
     private fun addLauncherItem(
@@ -230,7 +171,6 @@ class MetmcDesktop(
         name: String,
         action: () -> Unit
     ) {
-
         val button = Button(context)
 
         button.text = name
@@ -250,69 +190,40 @@ class MetmcDesktop(
         )
     }
 
-    private fun createLinuxWindow() {
+    private fun openLinuxDesktop() {
+        try {
+            val intent = Intent(
+                context,
+                LinuxDesktopActivity::class.java
+            )
 
-        val content = LinearLayout(context)
-
-        content.orientation = LinearLayout.VERTICAL
-
-        val title = TextView(context)
-
-        title.text =
-            "Debian / Linux\n\nLinux application launcher"
-
-        title.setTextColor(Color.WHITE)
-        title.textSize = 17f
-        title.setPadding(dp(18), dp(18), dp(18), dp(18))
-
-        content.addView(title)
-
-        val terminal = Button(context)
-
-        terminal.text = "Open Debian Terminal"
-        terminal.setAllCaps(false)
-
-        terminal.setOnClickListener {
-
+            context.startActivity(intent)
+        } catch (e: Exception) {
             Toast.makeText(
                 context,
-                "Debian launcher connected",
-                Toast.LENGTH_SHORT
+                "Unable to open Debian Desktop: ${e.message}",
+                Toast.LENGTH_LONG
             ).show()
         }
-
-        content.addView(terminal)
-
-        createWindow(
-            "Linux",
-            content
-        )
     }
 
     private fun createAndroidWindow() {
-
         val content = LinearLayout(context)
-
         content.orientation = LinearLayout.VERTICAL
+        content.setPadding(dp(18), dp(18), dp(18), dp(18))
 
         val title = TextView(context)
-
-        title.text =
-            "Android Applications"
-
+        title.text = "Android Applications"
         title.textSize = 19f
         title.setTextColor(Color.WHITE)
-        title.setPadding(dp(18), dp(18), dp(18), dp(18))
 
         content.addView(title)
 
         val info = TextView(context)
-
         info.text =
             "Android applications will appear here as METMC desktop windows."
-
         info.setTextColor(Color.LTGRAY)
-        info.setPadding(dp(18), dp(10), dp(18), dp(18))
+        info.setPadding(0, dp(15), 0, 0)
 
         content.addView(info)
 
@@ -323,22 +234,18 @@ class MetmcDesktop(
     }
 
     private fun createSettingsWindow() {
-
         val box = LinearLayout(context)
-
         box.orientation = LinearLayout.VERTICAL
+        box.setPadding(dp(12), dp(12), dp(12), dp(12))
 
         val title = TextView(context)
-
         title.text = "METMC OS Settings"
         title.textSize = 22f
         title.setTextColor(Color.WHITE)
-        title.setPadding(dp(18), dp(18), dp(18), dp(18))
 
         box.addView(title)
 
         val wallpaper = Button(context)
-
         wallpaper.text = "🖼  Change Wallpaper"
         wallpaper.setAllCaps(false)
 
@@ -360,32 +267,25 @@ class MetmcDesktop(
     ): View {
 
         val window = LinearLayout(context)
-
         window.orientation = LinearLayout.VERTICAL
 
         val background = GradientDrawable()
-
-        background.setColor(
-            Color.rgb(30, 32, 40)
-        )
-
-        background.cornerRadius = dp(14).toFloat()
+        background.setColor(Color.rgb(30, 32, 40))
+        background.cornerRadius = dp(12).toFloat()
 
         window.background = background
+        window.elevation = dp(10).toFloat()
 
         val titleBar = LinearLayout(context)
-
         titleBar.gravity = Gravity.CENTER_VERTICAL
-
-        titleBar.setBackgroundColor(
-            Color.rgb(45, 47, 57)
-        )
+        titleBar.setBackgroundColor(Color.rgb(45, 47, 57))
 
         val titleText = TextView(context)
-
         titleText.text = title
         titleText.textSize = 15f
         titleText.setTextColor(Color.WHITE)
+        titleText.gravity = Gravity.CENTER_VERTICAL
+        titleText.setPadding(dp(12), 0, dp(8), 0)
 
         titleBar.addView(
             titleText,
@@ -396,67 +296,23 @@ class MetmcDesktop(
             )
         )
 
-        val minimize = Button(context)
-
-        minimize.text = "−"
-
-        minimize.setOnClickListener {
-            window.visibility = View.GONE
-        }
+        val minimize = windowButton("−")
+        val maximize = windowButton("□")
+        val close = windowButton("×")
 
         titleBar.addView(
             minimize,
-            LinearLayout.LayoutParams(
-                dp(48),
-                dp(45)
-            )
+            LinearLayout.LayoutParams(dp(48), dp(45))
         )
-
-        val maximize = Button(context)
-
-        maximize.text = "□"
-
-        maximize.setOnClickListener {
-
-            val params = window.layoutParams
-
-            params.width = LayoutParams.MATCH_PARENT
-            params.height = desktopArea.height - dp(64)
-
-            window.layoutParams = params
-
-            window.x = 0f
-            window.y = 0f
-
-            window.bringToFront()
-        }
 
         titleBar.addView(
             maximize,
-            LinearLayout.LayoutParams(
-                dp(48),
-                dp(45)
-            )
+            LinearLayout.LayoutParams(dp(48), dp(45))
         )
-
-        val close = Button(context)
-
-        close.text = "×"
-
-        close.setOnClickListener {
-
-            desktopArea.removeView(window)
-
-            windows.remove(window)
-
-        }
 
         titleBar.addView(
             close,
-            LinearLayout.LayoutParams(
-                dp(48),
-                dp(45)
-            )
+            LinearLayout.LayoutParams(dp(48), dp(45))
         )
 
         window.addView(titleBar)
@@ -471,38 +327,89 @@ class MetmcDesktop(
         )
 
         val params = LayoutParams(
-            dp(340),
-            dp(250)
+            dp(360),
+            dp(260)
         )
 
-        params.leftMargin =
-            dp(30 + windows.size * 20)
-
-        params.topMargin =
-            dp(30 + windows.size * 20)
+        params.leftMargin = dp(30 + windows.size * 20)
+        params.topMargin = dp(30 + windows.size * 20)
 
         desktopArea.addView(window, params)
-
         windows.add(window)
 
-        makeDraggable(
-            window,
-            titleBar
-        )
+        var maximized = false
+        var oldW = params.width
+        var oldH = params.height
+        var oldX = params.leftMargin
+        var oldY = params.topMargin
+
+        minimize.setOnClickListener {
+            window.visibility = View.GONE
+        }
+
+        maximize.setOnClickListener {
+            if (!maximized) {
+                oldW = window.width
+                oldH = window.height
+                oldX = window.left
+                oldY = window.top
+
+                val p = window.layoutParams
+                p.width = desktopArea.width
+                p.height = desktopArea.height
+                window.layoutParams = p
+
+                window.x = 0f
+                window.y = 0f
+
+                maximized = true
+            } else {
+                val p = window.layoutParams
+                p.width = oldW
+                p.height = oldH
+                window.layoutParams = p
+
+                window.x = oldX.toFloat()
+                window.y = oldY.toFloat()
+
+                maximized = false
+            }
+
+            window.bringToFront()
+        }
+
+        close.setOnClickListener {
+            desktopArea.removeView(window)
+            windows.remove(window)
+        }
+
+        makeDraggable(window, titleBar)
+
+        window.setOnClickListener {
+            window.bringToFront()
+        }
 
         window.bringToFront()
 
         return window
     }
 
+    private fun windowButton(text: String): Button {
+        val b = Button(context)
+        b.text = text
+        b.textSize = 16f
+        b.setTextColor(Color.WHITE)
+        b.setAllCaps(false)
+        b.setPadding(0, 0, 0, 0)
+        return b
+    }
+
     private fun makeDraggable(
         window: View,
         bar: View
     ) {
-
         var downX = 0f
         var downY = 0f
-
         var startX = 0f
         var startY = 0f
 
@@ -510,8 +417,7 @@ class MetmcDesktop(
 
             when (event.action) {
 
-                android.view.MotionEvent.ACTION_DOWN -> {
-
+                MotionEvent.ACTION_DOWN -> {
                     downX = event.rawX
                     downY = event.rawY
 
@@ -519,24 +425,23 @@ class MetmcDesktop(
                     startY = window.y
 
                     window.bringToFront()
-
                     true
                 }
 
-                android.view.MotionEvent.ACTION_MOVE -> {
+                MotionEvent.ACTION_MOVE -> {
 
                     window.x =
-                        startX +
-                        event.rawX -
-                        downX
+                        (startX + event.rawX - downX)
+                            .coerceAtLeast(0f)
 
                     window.y =
-                        startY +
-                        event.rawY -
-                        downY
+                        (startY + event.rawY - downY)
+                            .coerceAtLeast(0f)
 
                     true
                 }
+
+                MotionEvent.ACTION_UP -> true
 
                 else -> true
             }
@@ -544,24 +449,22 @@ class MetmcDesktop(
     }
 
     private fun chooseWallpaper() {
-
         if (activity == null)
             return
 
-        val intent =
-            android.content.Intent(
-                android.content.Intent.ACTION_OPEN_DOCUMENT
-            )
+        val intent = Intent(
+            Intent.ACTION_OPEN_DOCUMENT
+        )
 
         intent.type = "image/*"
 
         intent.addCategory(
-            android.content.Intent.CATEGORY_OPENABLE
+            Intent.CATEGORY_OPENABLE
         )
 
         intent.addFlags(
-            android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION or
-            android.content.Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION
+            Intent.FLAG_GRANT_READ_URI_PERMISSION or
+            Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION
         )
 
         activity.startActivityForResult(
@@ -571,12 +474,10 @@ class MetmcDesktop(
     }
 
     fun applyWallpaper(uri: Uri) {
-
         wallpaperUri = uri
 
         try {
-
-            val stream: InputStream =
+            val stream =
                 context.contentResolver
                     .openInputStream(uri)
                     ?: return
@@ -588,26 +489,11 @@ class MetmcDesktop(
             stream.close()
 
             if (bitmap != null) {
-
-                val drawable =
-                    android.graphics.drawable.BitmapDrawable(
+                desktopArea.background =
+                    BitmapDrawable(
                         resources,
                         bitmap
                     )
-
-                drawable.gravity =
-                    Gravity.CENTER
-
-                drawable.setTileModeX(
-                    android.graphics.Shader.TileMode.CLAMP
-                )
-
-                drawable.setTileModeY(
-                    android.graphics.Shader.TileMode.CLAMP
-                )
-
-                desktopArea.background =
-                    drawable
             }
 
         } catch (e: Exception) {
@@ -621,7 +507,6 @@ class MetmcDesktop(
     }
 
     private fun dp(value: Int): Int {
-
         return (
             value *
             resources.displayMetrics.density
