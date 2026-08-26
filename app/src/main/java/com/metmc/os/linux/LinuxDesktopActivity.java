@@ -175,7 +175,7 @@ public class LinuxDesktopActivity extends Activity {
                 String id=new File(file).getName().replace(".desktop","");
                 String cmd="export HOME=/root; export USER=root; export DISPLAY=:100; "+
                         "export XDG_RUNTIME_DIR=/tmp/metmc-runtime; "+
-                        "gtk-launch "+quote(id);
+                        "exec sh -c "+quote("grep -m1 '^Exec=' "+quote(file)+" | sed 's/^Exec=//; s/ %F//; s/ %U//; s/ %f//; s/ %u//' | sh");
                 new ProcessBuilder("su","-c",
                         "chroot /data/local/linux/rootfs /bin/bash -lc "+quote(cmd))
                         .redirectErrorStream(true).start();
