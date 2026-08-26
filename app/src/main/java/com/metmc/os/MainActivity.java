@@ -1,4 +1,3 @@
-import com.metmc.os.linux.LinuxGuiLauncher;
 package com.metmc.os;
 
 import com.metmc.os.linux.LinuxGuiEnvironment;

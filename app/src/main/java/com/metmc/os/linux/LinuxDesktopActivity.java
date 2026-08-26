@@ -223,7 +223,7 @@ public class LinuxDesktopActivity extends Activity {
                     BufferedReader r=new BufferedReader(new InputStreamReader(p.getInputStream()));
                     StringBuilder out=new StringBuilder();
                     String line;
-                    while((line=r.readLine())!=null)out.append(line).append('\\n');
+                    while((line=r.readLine())!=null)out.append(line).append('\n');
                     p.waitFor();
                     runOnUiThread(()->output.append(out.toString()+"root@debian:~$ "));
                 }catch(Exception ex){runOnUiThread(()->output.append(ex+"\\n"));}}
