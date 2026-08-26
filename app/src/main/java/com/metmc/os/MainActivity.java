@@ -632,53 +632,197 @@ public class MainActivity extends Activity {
     }
 
     void showLinuxShell() {
-        final Dialog d=new Dialog(this);
+        final Dialog d = new Dialog(this);
 
-        LinearLayout box=new LinearLayout(this);
-        box.setOrientation(LinearLayout.VERTICAL);
-        box.setPadding(dp(15),dp(15),dp(15),dp(15));
-        box.setBackgroundColor(Color.rgb(8,8,10));
+        LinearLayout terminal = new LinearLayout(this);
+        terminal.setOrientation(LinearLayout.VERTICAL);
+        terminal.setBackgroundColor(Color.rgb(12, 13, 16));
 
-        TextView title=tv("Debian Terminal",20);
-        title.setTypeface(Typeface.MONOSPACE,Typeface.BOLD);
-        box.addView(title,new LinearLayout.LayoutParams(-1,dp(45)));
+        // Terminal title bar
+        LinearLayout bar = new LinearLayout(this);
+        bar.setGravity(Gravity.CENTER_VERTICAL);
+        bar.setPadding(dp(12), 0, dp(6), 0);
+        bar.setBackgroundColor(Color.rgb(30, 32, 38));
 
-        ScrollView scroll=new ScrollView(this);
-        TextView output=tv("root@debian:~$ Connected\\n",13);
+        TextView icon = tv("●", 13);
+        icon.setTextColor(Color.rgb(80, 210, 120));
+
+        TextView title = tv("  Debian Terminal", 15);
+        title.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+
+        bar.addView(icon,
+            new LinearLayout.LayoutParams(dp(25), dp(48)));
+
+        bar.addView(title,
+            new LinearLayout.LayoutParams(0, dp(48), 1));
+
+        Button clear = btn("Clear");
+        clear.setTextSize(12);
+        bar.addView(clear,
+            new LinearLayout.LayoutParams(dp(70), dp(42)));
+
+        Button close = btn("×");
+        close.setTextSize(20);
+        bar.addView(close,
+            new LinearLayout.LayoutParams(dp(48), dp(42)));
+
+        terminal.addView(
+            bar,
+            new LinearLayout.LayoutParams(-1, dp(50))
+        );
+
+        // Terminal output
+        ScrollView scroll = new ScrollView(this);
+        scroll.setFillViewport(true);
+        scroll.setBackgroundColor(Color.rgb(8, 9, 11));
+
+        TextView output = new TextView(this);
+        output.setText(
+            "METMC OS Linux Terminal\n" +
+            "Debian ARM64 environment\n" +
+            "──────────────────────────────\n\n" +
+            "root@metmc:~# "
+        );
+
+        output.setTextColor(Color.rgb(225, 230, 235));
+        output.setTextSize(14);
         output.setTypeface(Typeface.MONOSPACE);
+        output.setPadding(
+            dp(14), dp(14), dp(14), dp(20)
+        );
+
         scroll.addView(output);
-        box.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
 
-        EditText command=new EditText(this);
-        command.setHint("Enter Debian command");
-        command.setHintTextColor(GRAY);
-        command.setTextColor(Color.WHITE);
+        terminal.addView(
+            scroll,
+            new LinearLayout.LayoutParams(-1, 0, 1)
+        );
+
+        // Command input row
+        LinearLayout inputRow = new LinearLayout(this);
+        inputRow.setGravity(Gravity.CENTER_VERTICAL);
+        inputRow.setPadding(
+            dp(10), dp(6), dp(10), dp(6)
+        );
+        inputRow.setBackgroundColor(Color.rgb(25, 27, 32));
+
+        TextView prompt = tv("root@metmc:~$ ", 13);
+        prompt.setTypeface(Typeface.MONOSPACE, Typeface.BOLD);
+        prompt.setTextColor(Color.rgb(90, 220, 130));
+
+        inputRow.addView(
+            prompt,
+            new LinearLayout.LayoutParams(
+                -2, dp(52)
+            )
+        );
+
+        EditText command = new EditText(this);
         command.setSingleLine(true);
+        command.setTextColor(Color.WHITE);
+        command.setHintTextColor(Color.rgb(110, 115, 125));
+        command.setHint("command");
+        command.setTextSize(14);
         command.setTypeface(Typeface.MONOSPACE);
-        box.addView(command,new LinearLayout.LayoutParams(-1,dp(55)));
+        command.setPadding(0, 0, 0, 0);
+        command.setBackgroundColor(Color.TRANSPARENT);
 
-        Button run=btn("Run");
-        box.addView(run,new LinearLayout.LayoutParams(-1,dp(55)));
+        inputRow.addView(
+            command,
+            new LinearLayout.LayoutParams(
+                0, dp(52), 1
+            )
+        );
 
-        run.setOnClickListener(v -> {
-            String cmd=command.getText().toString().trim();
-            if(cmd.length()==0)return;
+        Button run = btn("▶");
+        run.setTextSize(15);
+        run.setContentDescription("Run command");
 
-            output.append("\\nroot@debian:~$ "+cmd+"\\n");
+        inputRow.addView(
+            run,
+            new LinearLayout.LayoutParams(
+                dp(55), dp(48)
+            )
+        );
+
+        terminal.addView(
+            inputRow,
+            new LinearLayout.LayoutParams(-1, dp(64))
+        );
+
+        Runnable execute = () -> {
+            String cmd = command.getText().toString().trim();
+
+            if (cmd.length() == 0)
+                return;
+
+            output.append(
+                cmd + "\n"
+            );
+
             command.setText("");
 
-            runLinuxCommand(cmd,r -> {
-                output.append(r+"\\n");
+            runLinuxCommand(cmd, result -> {
+                output.append(
+                    result + "\n\nroot@metmc:~# "
+                );
+
                 scroll.post(() ->
-                    scroll.fullScroll(View.FOCUS_DOWN));
+                    scroll.fullScroll(View.FOCUS_DOWN)
+                );
+
+                command.requestFocus();
             });
+        };
+
+        run.setOnClickListener(v -> execute.run());
+
+        command.setOnEditorActionListener((v, actionId, event) -> {
+            if (event != null &&
+                event.getKeyCode() == KeyEvent.KEYCODE_ENTER) {
+
+                execute.run();
+                return true;
+            }
+
+            return false;
         });
 
-        d.setContentView(box);
+        clear.setOnClickListener(v -> {
+            output.setText("root@metmc:~# ");
+            command.requestFocus();
+        });
+
+        close.setOnClickListener(v -> d.dismiss());
+
+        d.setContentView(terminal);
+        d.setTitle("Debian Terminal");
+
+        d.setOnShowListener(v -> {
+            Window w = d.getWindow();
+
+            if (w != null) {
+                w.setBackgroundDrawable(
+                    new ColorDrawable(Color.TRANSPARENT)
+                );
+
+                w.setLayout(
+                    dp(760),
+                    dp(520)
+                );
+            }
+
+            command.requestFocus();
+        });
+
         d.show();
 
-        if(d.getWindow()!=null)
-            d.getWindow().setLayout(dp(700),dp(600));
+        if (d.getWindow() != null) {
+            d.getWindow().setLayout(
+                dp(760),
+                dp(520)
+            );
+        }
     }
 
     void runLinuxCommand(
