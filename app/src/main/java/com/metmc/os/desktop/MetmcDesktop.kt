@@ -559,6 +559,11 @@ class MetmcDesktop(
             android.content.Intent.CATEGORY_OPENABLE
         )
 
+        intent.addFlags(
+            android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION or
+            android.content.Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION
+        )
+
         activity.startActivityForResult(
             intent,
             9001
