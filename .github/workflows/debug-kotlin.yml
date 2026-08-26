@@ -29,4 +29,7 @@ jobs:
           chmod +x gradlew
           ./gradlew :app:compileDebugKotlin --stacktrace --info 2>&1 | tee kotlin-build.log
           echo "===== COMPILER ERRORS ====="
-          grep -nEi 'e: |error:|unresolved reference|expecting|type mismatch|overload resolution|caused by:' kotlin-build.log | tail -150
+          echo "===== ACTUAL FAILURE ====="
+grep -nEi -B5 -A12 'e: |error:|unresolved reference|expecting|type mismatch|overload resolution|caused by:|what went wrong|execution failed' kotlin-build.log | tail -250 || true
+echo "===== LAST 250 LOG LINES ====="
+tail -250 kotlin-build.log
