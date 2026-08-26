@@ -1,0 +1,32 @@
+name: METMC OS Build
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Build
+        run: |
+          set +e
+          gradle clean assembleDebug --stacktrace 2>&1 | tee build.log
+          status=${PIPESTATUS[0]}
+
+          echo "===== ACTUAL COMPILER ERRORS ====="
+          grep -nEi \
+            'error:|e: |unresolved reference|expecting|type mismatch|class, interface, enum|unclosed|cannot find symbol' \
+            build.log | head -100 || true
+
+          echo "===== BUILD RESULT ====="
+          exit "$status"
