@@ -4,6 +4,9 @@ import android.app.Activity;
 import android.os.Bundle;
 import android.graphics.Color;
 import android.graphics.Typeface;
+import android.graphics.drawable.ColorDrawable;
+import android.view.Gravity;
+import android.view.WindowManager;
 import android.view.KeyEvent;
 import android.view.View;
 import android.widget.*;
@@ -71,6 +74,15 @@ public class LinuxTerminalActivity extends Activity {
 
         setContentView(root);
 
+        WindowManager.LayoutParams lp = getWindow().getAttributes();
+        lp.width = (int)(getResources().getDisplayMetrics().widthPixels * 0.75f);
+        lp.height = (int)(getResources().getDisplayMetrics().heightPixels * 0.60f);
+        lp.gravity = Gravity.CENTER;
+        lp.dimAmount = 0.35f;
+        getWindow().setAttributes(lp);
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND);
+        getWindow().setBackgroundDrawable(new ColorDrawable(Color.rgb(8, 8, 10)));
+
         startShell();
 
         run.setOnClickListener(v -> sendCommand());
@@ -87,7 +99,7 @@ public class LinuxTerminalActivity extends Activity {
                 shell = new ProcessBuilder(
                         "su",
                         "-c",
-                        "chroot /data/local/linux/rootfs /bin/bash"
+                        "chroot /data/local/linux/rootfs /bin/bash -i"
                 ).redirectErrorStream(true).start();
 
                 shellIn = new BufferedWriter(
@@ -105,7 +117,7 @@ public class LinuxTerminalActivity extends Activity {
                         "export DISPLAY=:100\n" +
                         "export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\n" +
                         "cd /root\n" +
-                        "PS1='root@metmc:\\w# '\n"
+                        "PS1='root@metmc:\\w# '; export PS1\n"
                 );
                 shellIn.flush();
 

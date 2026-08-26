@@ -3,76 +3,126 @@ package com.metmc.os.linux;
 import android.app.Activity;
 import android.os.Bundle;
 import android.graphics.Color;
+import android.view.Gravity;
 import android.view.View;
-import android.widget.LinearLayout;
 import android.widget.Button;
+import android.widget.FrameLayout;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 
 public class LinuxDesktopActivity extends Activity {
 
-    private LinuxDisplayView display;
+    private FrameLayout desktop;
+    private LinearLayout taskbar;
 
     @Override
     protected void onCreate(Bundle state) {
         super.onCreate(state);
 
-        LinearLayout root = new LinearLayout(this);
-        root.setOrientation(LinearLayout.VERTICAL);
-        root.setBackgroundColor(Color.BLACK);
+        FrameLayout root = new FrameLayout(this);
+        root.setBackgroundColor(Color.rgb(10,12,16));
 
-        LinearLayout bar = new LinearLayout(this);
-        bar.setOrientation(LinearLayout.HORIZONTAL);
+        desktop = new FrameLayout(this);
+        desktop.setBackgroundColor(Color.rgb(18,22,28));
 
-        TextView title = new TextView(this);
-        title.setText("  METMC Linux Desktop  ");
-        title.setTextColor(Color.WHITE);
-        title.setTextSize(16);
+        root.addView(desktop,
+                new FrameLayout.LayoutParams(
+                        -1,-1));
 
-        Button terminal = new Button(this);
-        terminal.setText("Terminal");
-        terminal.setOnClickListener(v -> {
-            startActivity(
-                new android.content.Intent(
-                    this,
-                    LinuxTerminalActivity.class
-                )
-            );
-        });
+        taskbar = new LinearLayout(this);
+        taskbar.setOrientation(LinearLayout.HORIZONTAL);
+        taskbar.setGravity(Gravity.CENTER_VERTICAL);
+        taskbar.setPadding(6,4,6,4);
+        taskbar.setBackgroundColor(Color.rgb(28,30,36));
 
-        bar.addView(
-            title,
-            new LinearLayout.LayoutParams(
-                0, 60, 1
-            )
-        );
+        FrameLayout.LayoutParams taskParams =
+                new FrameLayout.LayoutParams(
+                        -1,58,
+                        Gravity.BOTTOM);
 
-        bar.addView(
-            terminal,
-            new LinearLayout.LayoutParams(
-                180, 60
-            )
-        );
-
-        root.addView(bar);
-
-        display = new LinuxDisplayView(this);
-
-        root.addView(
-            display,
-            new LinearLayout.LayoutParams(
-                -1, 0, 1
-            )
-        );
+        root.addView(taskbar,taskParams);
 
         setContentView(root);
+
+        addTaskButton(
+                "Terminal",
+                v -> openTerminal());
+
+        addTaskButton(
+                "Debian",
+                v -> openLinuxDisplay());
+    }
+
+    private void addTaskButton(
+            String name,
+            View.OnClickListener listener) {
+
+        Button b = new Button(this);
+        b.setText(name);
+        b.setTextColor(Color.WHITE);
+        b.setTextSize(13);
+
+        taskbar.addView(
+                b,
+                new LinearLayout.LayoutParams(
+                        130,52));
+
+        b.setOnClickListener(listener);
+    }
+
+    private void openTerminal() {
+
+        TextView content = new TextView(this);
+        content.setText(
+                "METMC Linux Terminal\n\n" +
+                "Use the Terminal button to open the shell."
+        );
+        content.setTextColor(Color.WHITE);
+        content.setTextSize(14);
+        content.setPadding(15,15,15,15);
+        content.setBackgroundColor(Color.BLACK);
+
+        DesktopWindow window =
+                new DesktopWindow(
+                        this,
+                        desktop,
+                        "METMC Terminal",
+                        content);
+
+        desktop.addView(window);
+        window.bringToFront();
+    }
+
+    private void openLinuxDisplay() {
+
+        LinuxDisplayView display =
+                new LinuxDisplayView(this);
+
+        DesktopWindow window =
+                new DesktopWindow(
+                        this,
+                        desktop,
+                        "Debian Linux",
+                        display);
+
+        desktop.addView(window);
+        window.bringToFront();
+
         display.start();
     }
 
-    @Override
-    protected void onDestroy() {
-        if (display != null)
-            display.stop();
+    public void openWindow(
+            String title,
+            View content) {
 
-        super.onDestroy();
+        DesktopWindow window =
+                new DesktopWindow(
+                        this,
+                        desktop,
+                        title,
+                        content);
+
+        desktop.addView(window);
+        window.bringToFront();
     }
 }
