@@ -1,0 +1,28 @@
+name: Show Build Errors
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Build and print real errors
+        run: |
+          chmod +x gradlew
+          set +e
+          ./gradlew :app:compileDebugJavaWithJavac :app:compileDebugKotlin --stacktrace > build.log 2>&1
+          STATUS=$?
+          echo "===== REAL COMPILER ERRORS ====="
+          grep -nEi 'error:|e: |unresolved reference|expecting|type mismatch|cannot find symbol|class, interface|unclosed|not a statement|duplicate|failed' build.log | tail -200
+          echo "===== LAST 80 LINES ====="
+          tail -80 build.log
+          exit $STATUS
