@@ -8,6 +8,7 @@ import android.graphics.Rect;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.MotionEvent;
+import android.view.KeyEvent;
 
 import java.io.BufferedInputStream;
 import java.io.InputStream;
@@ -245,6 +246,36 @@ public class LinuxDisplayView extends SurfaceView
         }
 
         return pixels;
+    }
+
+    @Override
+    public boolean onKeyDown(int keyCode, KeyEvent event) {
+        String key = KeyEvent.keyCodeToString(keyCode)
+                .replace("KEYCODE_", "")
+                .toLowerCase();
+
+        sendX11Key(key);
+        return true;
+    }
+
+    private void sendX11Key(String key) {
+        new Thread(() -> {
+            try {
+                String cmd =
+                        "export DISPLAY=:100; " +
+                        "export HOME=/root; " +
+                        "if command -v xdotool >/dev/null 2>&1; then " +
+                        "xdotool key " + quote(key) + "; " +
+                        "fi";
+
+                new ProcessBuilder(
+                        "su", "-c",
+                        "chroot /data/local/linux/rootfs /bin/bash -lc " +
+                        quote(cmd)
+                ).start();
+            } catch (Exception ignored) {
+            }
+        }).start();
     }
 
     @Override
