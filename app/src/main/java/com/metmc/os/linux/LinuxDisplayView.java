@@ -1,387 +1,192 @@
 package com.metmc.os.linux;
 
 import android.content.Context;
-import android.graphics.Bitmap;
-import android.graphics.Canvas;
-import android.graphics.Color;
-import android.graphics.Rect;
-import android.view.SurfaceHolder;
-import android.view.SurfaceView;
-import android.view.MotionEvent;
-import android.view.KeyEvent;
+import android.graphics.*;
+import android.view.*;
 
-import java.io.BufferedInputStream;
-import java.io.InputStream;
+import java.io.*;
+import java.util.concurrent.*;
 
-public class LinuxDisplayView extends SurfaceView
-        implements SurfaceHolder.Callback {
-
-    private static final int X11_WIDTH = 1280;
-    private static final int X11_HEIGHT = 720;
-    private static final int BYTES_PER_PIXEL = 4;
-    private static final int FRAME_SIZE =
-            X11_WIDTH * X11_HEIGHT * BYTES_PER_PIXEL;
-
+public class LinuxDisplayView extends SurfaceView implements SurfaceHolder.Callback {
+    private static final int W=1280,H=720,BPP=4,FRAME=W*H*BPP;
     private volatile boolean running;
     private Thread captureThread;
     private Process ffmpeg;
     private Bitmap bitmap;
-    private final Object bitmapLock = new Object();
+    private final Object lock=new Object();
+    private long lastMove;
 
-    public LinuxDisplayView(Context context) {
-        super(context);
-
+    public LinuxDisplayView(Context c){
+        super(c);
         getHolder().addCallback(this);
-
         setFocusable(true);
         setFocusableInTouchMode(true);
+        requestFocus();
     }
 
-    @Override
-    public void surfaceCreated(SurfaceHolder holder) {
-        start();
-    }
+    public void surfaceCreated(SurfaceHolder h){ start(); }
+    public void surfaceChanged(SurfaceHolder h,int f,int w,int he){}
+    public void surfaceDestroyed(SurfaceHolder h){ stop(); }
 
-    @Override
-    public void surfaceChanged(
-            SurfaceHolder holder,
-            int format,
-            int width,
-            int height) {
-    }
-
-    @Override
-    public void surfaceDestroyed(SurfaceHolder holder) {
-        stop();
-    }
-
-    public synchronized void start() {
-        if (running)
-            return;
-
-        running = true;
-
-        captureThread = new Thread(
-                this::captureLoop,
-                "METMC-X11-Stream"
-        );
-
+    public synchronized void start(){
+        if(running)return;
+        running=true;
+        captureThread=new Thread(this::captureLoop,"METMC-X11-Stream");
         captureThread.start();
     }
 
-    public synchronized void stop() {
-        running = false;
-
+    public synchronized void stop(){
+        running=false;
         stopFFmpeg();
-
-        if (captureThread != null) {
+        if(captureThread!=null){
             captureThread.interrupt();
-
-            if (Thread.currentThread() != captureThread) {
-                try {
-                    captureThread.join(1500);
-                } catch (InterruptedException ignored) {
-                }
-            }
-
-            captureThread = null;
+            captureThread=null;
         }
     }
 
-    private void captureLoop() {
-
-        while (running) {
-
-            try {
+    private void captureLoop(){
+        while(running){
+            try{
                 startFFmpeg();
-
-                if (ffmpeg == null)
-                    throw new Exception("FFmpeg did not start");
-
-                InputStream input =
-                        new BufferedInputStream(
-                                ffmpeg.getInputStream(),
-                                FRAME_SIZE
-                        );
-
-                byte[] frame = new byte[FRAME_SIZE];
-
-                while (running) {
-
-                    if (!readFrame(input, frame))
-                        break;
-
+                if(ffmpeg==null)throw new Exception("FFmpeg unavailable");
+                InputStream in=new BufferedInputStream(ffmpeg.getInputStream(),FRAME);
+                byte[] frame=new byte[FRAME];
+                while(running && readFrame(in,frame)){
                     updateBitmap(frame);
                     postInvalidateOnAnimation();
                 }
-
-            } catch (Exception e) {
-
-                if (running) {
-                    try {
-                        Thread.sleep(500);
-                    } catch (InterruptedException ignored) {
-                        break;
-                    }
-                }
-
-            } finally {
-                stopFFmpeg();
-            }
+            }catch(Exception ignored){
+                if(running)try{Thread.sleep(300);}catch(Exception e){break;}
+            }finally{stopFFmpeg();}
         }
     }
 
-    private void startFFmpeg() throws Exception {
-
-        String command =
-                "export DISPLAY=:100; " +
-                "export HOME=/root; " +
-                "export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin; " +
-                "exec ffmpeg " +
-                "-loglevel error " +
-                "-f x11grab " +
-                "-draw_mouse 1 " +
-                "-video_size 1280x720 " +
-                "-framerate 30 " +
-                "-i :100 " +
-                "-pix_fmt rgba " +
-                "-f rawvideo " +
-                "-";
-
-        ffmpeg = new ProcessBuilder(
-                "su",
-                "-c",
-                "chroot /data/local/linux/rootfs " +
-                "/bin/bash -lc " +
-                quote(command)
-        )
-                .redirectErrorStream(false)
-                .start();
-
-        // Give FFmpeg a moment to initialize.
-        Thread.sleep(150);
+    private void startFFmpeg() throws Exception{
+        String cmd="export DISPLAY=:100; export HOME=/root; "+
+                "export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin; "+
+                "exec ffmpeg -loglevel error -f x11grab -draw_mouse 1 "+
+                "-video_size 1280x720 -framerate 30 -i :100 "+
+                "-pix_fmt rgba -f rawvideo -";
+        ffmpeg=new ProcessBuilder("su","-c",
+                "chroot /data/local/linux/rootfs /bin/bash -lc "+quote(cmd))
+                .redirectErrorStream(false).start();
     }
 
-    private boolean readFrame(
-            InputStream input,
-            byte[] buffer) throws Exception {
-
-        int offset = 0;
-
-        while (offset < buffer.length && running) {
-
-            int n = input.read(
-                    buffer,
-                    offset,
-                    buffer.length - offset
-            );
-
-            if (n < 0)
-                return false;
-
-            if (n == 0)
-                continue;
-
-            offset += n;
+    private boolean readFrame(InputStream in,byte[] b)throws Exception{
+        int off=0,n;
+        while(off<b.length && running){
+            n=in.read(b,off,b.length-off);
+            if(n<0)return false;
+            off+=n;
         }
-
-        return offset == buffer.length;
+        return off==b.length;
     }
 
-    private void updateBitmap(byte[] frame) {
-
-        Bitmap newBitmap;
-
-        synchronized (bitmapLock) {
-
-            if (bitmap == null ||
-                    bitmap.getWidth() != X11_WIDTH ||
-                    bitmap.getHeight() != X11_HEIGHT) {
-
-                bitmap = Bitmap.createBitmap(
-                        X11_WIDTH,
-                        X11_HEIGHT,
-                        Bitmap.Config.ARGB_8888
-                );
-            }
-
-            newBitmap = bitmap;
+    private void updateBitmap(byte[] f){
+        int[] p=new int[W*H];
+        int j=0;
+        for(int i=0;i<p.length;i++){
+            int r=f[j++]&255,g=f[j++]&255,b=f[j++]&255,a=f[j++]&255;
+            p[i]=(a<<24)|(r<<16)|(g<<8)|b;
         }
-
-        newBitmap.setPixels(
-                rgbaToArgb(frame),
-                0,
-                X11_WIDTH,
-                0,
-                0,
-                X11_WIDTH,
-                X11_HEIGHT
-        );
-    }
-
-    /*
-     * X11/FFmpeg RGBA -> Android ARGB.
-     *
-     * The returned array is reused for the current frame.
-     */
-    private int[] rgbaToArgb(byte[] rgba) {
-
-        int[] pixels =
-                new int[X11_WIDTH * X11_HEIGHT];
-
-        int p = 0;
-
-        for (int i = 0; i < pixels.length; i++) {
-
-            int r = rgba[p++] & 0xff;
-            int g = rgba[p++] & 0xff;
-            int b = rgba[p++] & 0xff;
-            int a = rgba[p++] & 0xff;
-
-            pixels[i] =
-                    (a << 24) |
-                    (r << 16) |
-                    (g << 8) |
-                    b;
+        synchronized(lock){
+            if(bitmap==null||bitmap.getWidth()!=W||bitmap.getHeight()!=H)
+                bitmap=Bitmap.createBitmap(W,H,Bitmap.Config.ARGB_8888);
+            bitmap.setPixels(p,0,W,0,0,W,H);
         }
-
-        return pixels;
     }
 
-    @Override
-    public boolean onKeyDown(int keyCode, KeyEvent event) {
-        String key = KeyEvent.keyCodeToString(keyCode)
-                .replace("KEYCODE_", "")
-                .toLowerCase();
-
-        sendX11Key(key);
+    @Override public boolean onKeyDown(int code,KeyEvent e){
+        if(e.isCtrlPressed()){
+            if(code==KeyEvent.KEYCODE_C){xkey("ctrl+c");return true;}
+            if(code==KeyEvent.KEYCODE_V){xkey("ctrl+v");return true;}
+            if(code==KeyEvent.KEYCODE_A){xkey("ctrl+a");return true;}
+            if(code==KeyEvent.KEYCODE_X){xkey("ctrl+x");return true;}
+            if(code==KeyEvent.KEYCODE_Z){xkey("ctrl+z");return true;}
+            if(code==KeyEvent.KEYCODE_Y){xkey("ctrl+y");return true;}
+            if(code==KeyEvent.KEYCODE_S){xkey("ctrl+s");return true;}
+        }
+        xkey(KeyEvent.keyCodeToString(code).replace("KEYCODE_","").toLowerCase());
         return true;
     }
 
-    private void sendX11Key(String key) {
-        new Thread(() -> {
-            try {
-                String cmd =
-                        "export DISPLAY=:100; " +
-                        "export HOME=/root; " +
-                        "if command -v xdotool >/dev/null 2>&1; then " +
-                        "xdotool key " + quote(key) + "; " +
-                        "fi";
-
-                new ProcessBuilder(
-                        "su", "-c",
-                        "chroot /data/local/linux/rootfs /bin/bash -lc " +
-                        quote(cmd)
-                ).start();
-            } catch (Exception ignored) {
-            }
+    private void xkey(String key){
+        new Thread(()->{
+            try{
+                String cmd="export DISPLAY=:100; "+
+                        "command -v xdotool >/dev/null 2>&1 && xdotool key "+quote(key);
+                new ProcessBuilder("su","-c",
+                        "chroot /data/local/linux/rootfs /bin/bash -lc "+quote(cmd)).start();
+            }catch(Exception ignored){}
         }).start();
     }
 
-    @Override
-    public boolean onTouchEvent(MotionEvent event) {
-        if (event.getAction() == MotionEvent.ACTION_DOWN ||
-            event.getAction() == MotionEvent.ACTION_MOVE ||
-            event.getAction() == MotionEvent.ACTION_UP) {
+    @Override public boolean onTouchEvent(MotionEvent e){
+        float x=e.getX()/Math.max(1,getWidth())*W;
+        float y=e.getY()/Math.max(1,getHeight())*H;
+        int action=e.getActionMasked();
 
-            final float x = event.getX() / Math.max(1f, getWidth()) * X11_WIDTH;
-            final float y = event.getY() / Math.max(1f, getHeight()) * X11_HEIGHT;
+        if(action==MotionEvent.ACTION_DOWN){
+            requestFocus();
+            sendMouse("mousemove "+(int)x+" "+(int)y+" mousedown 1");
+            return true;
+        }
 
-            String action;
+        if(action==MotionEvent.ACTION_MOVE){
+            long now=System.currentTimeMillis();
+            if(now-lastMove>16){
+                lastMove=now;
+                sendMouse("mousemove "+(int)x+" "+(int)y);
+            }
+            return true;
+        }
 
-            if (event.getAction() == MotionEvent.ACTION_DOWN)
-                action = "mousemove " + (int)x + " " + (int)y + " click 1";
-            else if (event.getAction() == MotionEvent.ACTION_UP)
-                action = "mousemove " + (int)x + " " + (int)y;
-            else
-                action = "mousemove " + (int)x + " " + (int)y;
-
-            new Thread(() -> {
-                try {
-                    String cmd =
-                            "export DISPLAY=:100; " +
-                            "export HOME=/root; " +
-                            "command -v xdotool >/dev/null 2>&1 && " +
-                            "xdotool " + action;
-
-                    new ProcessBuilder(
-                            "su", "-c",
-                            "chroot /data/local/linux/rootfs /bin/bash -lc " +
-                            quote(cmd)
-                    ).start();
-                } catch (Exception ignored) {
-                }
-            }).start();
-
+        if(action==MotionEvent.ACTION_UP){
+            sendMouse("mousemove "+(int)x+" "+(int)y+" mouseup 1");
             return true;
         }
 
         return true;
     }
 
-    @Override
-    protected void onDraw(Canvas canvas) {
-
-        super.onDraw(canvas);
-
-        canvas.drawColor(Color.BLACK);
-
-        Bitmap current;
-
-        synchronized (bitmapLock) {
-            current = bitmap;
+    public boolean onGenericMotionEvent(MotionEvent e){
+        if((e.getSource()&InputDevice.SOURCE_CLASS_POINTER)!=0 &&
+                e.getAction()==MotionEvent.ACTION_SCROLL){
+            float v=e.getAxisValue(MotionEvent.AXIS_VSCROLL);
+            sendMouse(v>0?"click 4":"click 5");
+            return true;
         }
-
-        if (current == null)
-            return;
-
-        Rect src = new Rect(
-                0,
-                0,
-                current.getWidth(),
-                current.getHeight()
-        );
-
-        Rect dst = new Rect(
-                0,
-                0,
-                getWidth(),
-                getHeight()
-        );
-
-        canvas.drawBitmap(
-                current,
-                src,
-                dst,
-                null
-        );
+        return super.onGenericMotionEvent(e);
     }
 
-    private synchronized void stopFFmpeg() {
+    private void sendMouse(String action){
+        new Thread(()->{
+            try{
+                String cmd="export DISPLAY=:100; "+
+                        "command -v xdotool >/dev/null 2>&1 && xdotool "+action;
+                new ProcessBuilder("su","-c",
+                        "chroot /data/local/linux/rootfs /bin/bash -lc "+quote(cmd)).start();
+            }catch(Exception ignored){}
+        }).start();
+    }
 
-        if (ffmpeg != null) {
+    @Override protected void onDraw(Canvas c){
+        super.onDraw(c);
+        c.drawColor(Color.BLACK);
+        Bitmap b;
+        synchronized(lock){b=bitmap;}
+        if(b!=null)c.drawBitmap(b,null,new Rect(0,0,getWidth(),getHeight()),null);
+    }
 
-            try {
-                ffmpeg.destroy();
-            } catch (Exception ignored) {
-            }
-
-            try {
-                ffmpeg.destroyForcibly();
-            } catch (Exception ignored) {
-            }
-
-            ffmpeg = null;
+    private synchronized void stopFFmpeg(){
+        if(ffmpeg!=null){
+            try{ffmpeg.destroy();}catch(Exception ignored){}
+            try{ffmpeg.destroyForcibly();}catch(Exception ignored){}
+            ffmpeg=null;
         }
     }
 
-    private static String quote(String value) {
-
-        return "'" +
-                value.replace(
-                        "'",
-                        "'\\''"
-                ) +
-                "'";
+    private static String quote(String s){
+        return "'"+s.replace("'","'\\''")+"'";
     }
 }
