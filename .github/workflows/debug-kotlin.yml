@@ -1,0 +1,32 @@
+name: Debug Kotlin
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+jobs:
+  debug:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Show project
+        run: |
+          echo "===== PROJECT ====="
+          ls -la
+          echo "===== GRADLE FILES ====="
+          find . -maxdepth 2 -type f \( -name 'gradlew' -o -name 'build.gradle*' -o -name 'settings.gradle*' \) -print
+
+      - name: Build Kotlin
+        run: |
+          chmod +x gradlew
+          ./gradlew :app:compileDebugKotlin --stacktrace --info 2>&1 | tee kotlin-build.log
+          echo "===== COMPILER ERRORS ====="
+          grep -nEi 'e: |error:|unresolved reference|expecting|type mismatch|overload resolution|caused by:' kotlin-build.log | tail -150
