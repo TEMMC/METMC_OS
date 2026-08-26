@@ -31,14 +31,34 @@ public class LinuxTerminalActivity extends Activity {
         root.setBackgroundColor(Color.rgb(8, 8, 10));
         root.setPadding(12, 12, 12, 12);
 
+        LinearLayout titleBar = new LinearLayout(this);
+        titleBar.setOrientation(LinearLayout.HORIZONTAL);
+        titleBar.setGravity(Gravity.CENTER_VERTICAL);
+        titleBar.setPadding(12, 0, 4, 0);
+        titleBar.setBackgroundColor(Color.rgb(28, 28, 32));
+
         TextView title = new TextView(this);
-        title.setText("METMC Linux Terminal");
+        title.setText("  METMC Linux Terminal");
         title.setTextColor(Color.WHITE);
-        title.setTextSize(18);
+        title.setTextSize(15);
         title.setTypeface(Typeface.MONOSPACE, Typeface.BOLD);
 
-        root.addView(title,
-                new LinearLayout.LayoutParams(-1, 60));
+        titleBar.addView(title,
+                new LinearLayout.LayoutParams(0, 52, 1));
+
+        Button close = new Button(this);
+        close.setText("×");
+        close.setTextColor(Color.WHITE);
+        close.setTextSize(20);
+        close.setBackgroundColor(Color.TRANSPARENT);
+
+        titleBar.addView(close,
+                new LinearLayout.LayoutParams(58, 52));
+
+        root.addView(titleBar,
+                new LinearLayout.LayoutParams(-1, 52));
+
+        close.setOnClickListener(v -> finish());
 
         ScrollView scroll = new ScrollView(this);
 
@@ -75,13 +95,22 @@ public class LinuxTerminalActivity extends Activity {
         setContentView(root);
 
         WindowManager.LayoutParams lp = getWindow().getAttributes();
-        lp.width = (int)(getResources().getDisplayMetrics().widthPixels * 0.75f);
-        lp.height = (int)(getResources().getDisplayMetrics().heightPixels * 0.60f);
+
+        int screenW = getResources().getDisplayMetrics().widthPixels;
+        int screenH = getResources().getDisplayMetrics().heightPixels;
+
+        // Standard METMC OS desktop window size.
+        lp.width = Math.min((int)(screenW * 0.82f), dp(720));
+        lp.height = Math.min((int)(screenH * 0.70f), dp(520));
+
         lp.gravity = Gravity.CENTER;
-        lp.dimAmount = 0.35f;
+        lp.dimAmount = 0.20f;
+
         getWindow().setAttributes(lp);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND);
-        getWindow().setBackgroundDrawable(new ColorDrawable(Color.rgb(8, 8, 10)));
+        getWindow().setBackgroundDrawable(
+                new ColorDrawable(Color.rgb(8, 8, 10))
+        );
 
         startShell();
 
@@ -91,6 +120,10 @@ public class LinuxTerminalActivity extends Activity {
             sendCommand();
             return true;
         });
+    }
+
+    private int dp(int value) {
+        return (int)(value * getResources().getDisplayMetrics().density + 0.5f);
     }
 
     private void startShell() {
