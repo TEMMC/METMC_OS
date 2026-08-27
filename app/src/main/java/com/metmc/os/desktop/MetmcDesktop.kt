@@ -1,915 +1,402 @@
 package com.metmc.os.desktop
 
 import android.app.Activity
-import android.app.Dialog
 import android.content.Context
 import android.content.Intent
 import android.graphics.Color
-import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.net.Uri
 import android.view.Gravity
-import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.View
-import android.view.ViewGroup
 import android.widget.*
-import com.metmc.os.linux.LinuxDesktopActivity
 import java.io.InputStream
 
-class MetmcDesktop(context: Context) : FrameLayout(context) {
+class MetmcDesktop(
+    context: Context
+) : FrameLayout(context) {
 
     private val activity = context as? Activity
 
-    private val desktop = FrameLayout(context)
+    private val desktopArea = FrameLayout(context)
     private val taskbar = LinearLayout(context)
     private val windows = ArrayList<View>()
 
-    private var launcherOpen = false
     private var wallpaperUri: Uri? = null
 
-    private val bg = Color.rgb(9, 11, 15)
-    private val panel = Color.rgb(20, 23, 29)
-    private val panel2 = Color.rgb(29, 32, 40)
-    private val border = Color.rgb(55, 60, 72)
-    private val accent = Color.rgb(95, 220, 135)
-    private val text = Color.WHITE
-    private val muted = Color.rgb(155, 162, 175)
-
     init {
-        build()
+        setBackgroundColor(Color.rgb(10,12,18))
+        buildDesktop()
     }
 
-    private fun build() {
-        setBackgroundColor(bg)
+    private fun buildDesktop() {
 
-        desktop.setBackgroundColor(bg)
+        desktopArea.setBackgroundColor(
+            Color.rgb(10,12,18)
+        )
 
         addView(
-            desktop,
+            desktopArea,
             LayoutParams(
                 MATCH_PARENT,
                 MATCH_PARENT
             )
         )
 
-        buildDesktop()
-        buildTaskbar()
+        createDesktopContent()
+        createTaskbar()
     }
 
-    private fun buildDesktop() {
-        val content = LinearLayout(context)
-        content.orientation = LinearLayout.VERTICAL
-        content.gravity = Gravity.CENTER
-        content.setPadding(dp(24), dp(20), dp(24), dp(100))
+    private fun createDesktopContent() {
 
-        val logo = TextView(context)
-        logo.text = "◈"
-        logo.textSize = 52f
-        logo.setTextColor(accent)
-        logo.gravity = Gravity.CENTER
+        val center = LinearLayout(context)
+        center.orientation = LinearLayout.VERTICAL
+        center.gravity = Gravity.CENTER
 
         val title = TextView(context)
         title.text = "METMC OS"
-        title.textSize = 34f
-        title.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-        title.setTextColor(text)
+        title.textSize = 38f
+        title.setTextColor(Color.WHITE)
         title.gravity = Gravity.CENTER
 
         val subtitle = TextView(context)
-        subtitle.text = "ANDROID + LINUX DESKTOP"
-        subtitle.textSize = 13f
-        subtitle.letterSpacing = 0.18f
-        subtitle.setTextColor(muted)
+        subtitle.text = "Android + Linux Desktop"
+        subtitle.textSize = 17f
+        subtitle.setTextColor(Color.LTGRAY)
         subtitle.gravity = Gravity.CENTER
 
-        val status = TextView(context)
-        status.text = "●  SYSTEM READY"
-        status.textSize = 13f
-        status.typeface = Typeface.DEFAULT_BOLD
-        status.setTextColor(accent)
-        status.gravity = Gravity.CENTER
-
-        content.addView(logo, LinearLayout.LayoutParams(-1, dp(70)))
-        content.addView(title, LinearLayout.LayoutParams(-1, dp(55)))
-        content.addView(subtitle, LinearLayout.LayoutParams(-1, dp(35)))
-        content.addView(status, LinearLayout.LayoutParams(-1, dp(40)))
-
-        desktop.addView(
-            content,
-            LayoutParams(-1, -1)
+        center.addView(
+            title,
+            LinearLayout.LayoutParams(
+                MATCH_PARENT,
+                dp(60)
+            )
         )
 
-        addDesktopIcon("▣", "Applications") {
-            showLauncher()
-        }
+        center.addView(
+            subtitle,
+            LinearLayout.LayoutParams(
+                MATCH_PARENT,
+                dp(45)
+            )
+        )
 
-        addDesktopIcon("🐧", "Linux") {
-            showLinux()
-        }
-
-        addDesktopIcon("▤", "Files") {
-            showFiles()
-        }
+        desktopArea.addView(
+            center,
+            FrameLayout.LayoutParams(
+                MATCH_PARENT,
+                MATCH_PARENT
+            )
+        )
     }
 
-    private fun addDesktopIcon(icon: String, name: String, action: () -> Unit) {
-        val button = TextView(context)
-        button.text = "$icon\n$name"
-        button.textSize = 13f
-        button.setTextColor(text)
-        button.gravity = Gravity.CENTER
-        button.setPadding(dp(8), dp(8), dp(8), dp(8))
-        button.setOnClickListener { action() }
+    /*
+     * CLEAN TASKBAR
+     *
+     * No Linux button.
+     * No Android button.
+     * No wallpaper button.
+     * No settings button.
+     *
+     * Applications create their own taskbar buttons.
+     */
+    private fun createTaskbar() {
 
-        val p = LayoutParams(dp(95), dp(82))
-        p.leftMargin = dp(18)
-        p.topMargin = dp(18 + windows.size * 5)
-
-        desktop.addView(button, p)
-    }
-
-    private fun buildTaskbar() {
         taskbar.orientation = LinearLayout.HORIZONTAL
         taskbar.gravity = Gravity.CENTER_VERTICAL
-        taskbar.setPadding(dp(8), dp(6), dp(8), dp(6))
-        taskbar.background = rounded(panel, dp(16))
 
-        val p = LayoutParams(-1, dp(62))
-        p.gravity = Gravity.BOTTOM
-        p.setMargins(dp(10), 0, dp(10), dp(10))
-
-        addView(taskbar, p)
-
-        taskbarButton("◈", "Start") {
-            showLauncher()
-        }
-
-        taskbarButton("▣", "Files") {
-            showFiles()
-        }
-
-        taskbarButton("🐧", "Linux") {
-            showLinux()
-        }
-
-        taskbarButton("⌘", "Terminal") {
-            showTerminal()
-        }
-
-        taskbarButton("⚙", "Settings") {
-            showSettings()
-        }
-
-        val spacer = Space(context)
-        taskbar.addView(
-            spacer,
-            LinearLayout.LayoutParams(0, 1, 1f)
+        taskbar.setPadding(
+            dp(8),
+            dp(5),
+            dp(8),
+            dp(5)
         )
 
-        val clock = TextView(context)
-        clock.text = "METMC OS"
-        clock.textSize = 12f
-        clock.setTextColor(muted)
-        clock.gravity = Gravity.CENTER
-
-        taskbar.addView(
-            clock,
-            LinearLayout.LayoutParams(dp(90), dp(48))
+        taskbar.setBackgroundColor(
+            Color.rgb(25,27,34)
         )
+
+        val params = LayoutParams(
+            MATCH_PARENT,
+            dp(58)
+        )
+
+        params.gravity = Gravity.BOTTOM
+
+        addView(taskbar, params)
     }
 
-    private fun taskbarButton(
-        icon: String,
-        description: String,
-        action: () -> Unit
-    ) {
-        val b = Button(context)
-        b.text = icon
-        b.textSize = 19f
-        b.setTextColor(text)
-        b.setAllCaps(false)
-        b.contentDescription = description
-        b.setOnClickListener { action() }
+    /*
+     * Add an application to the shared desktop.
+     *
+     * Both Android and Linux applications use this same
+     * window/taskbar mechanism.
+     */
+    fun addApplicationWindow(
+        title: String,
+        content: View
+    ): View {
 
-        taskbar.addView(
-            b,
-            LinearLayout.LayoutParams(dp(55), dp(48))
-        )
-    }
-
-    private fun showLauncher() {
-        if (launcherOpen) return
-        launcherOpen = true
-
-        val box = LinearLayout(context)
-        box.orientation = LinearLayout.VERTICAL
-        box.setPadding(dp(18), dp(18), dp(18), dp(18))
-        box.background = rounded(panel, dp(18))
-
-        val header = LinearLayout(context)
-        header.gravity = Gravity.CENTER_VERTICAL
-
-        val title = TextView(context)
-        title.text = "METMC OS"
-        title.textSize = 22f
-        title.typeface = Typeface.DEFAULT_BOLD
-        title.setTextColor(text)
-
-        header.addView(
+        return createWindow(
             title,
-            LinearLayout.LayoutParams(0, dp(48), 1f)
+            content
         )
-
-        val close = button("×")
-        close.setOnClickListener {
-            box.parent?.let {
-                (it as ViewGroup).removeView(box)
-            }
-            launcherOpen = false
-        }
-
-        header.addView(
-            close,
-            LinearLayout.LayoutParams(dp(50), dp(48))
-        )
-
-        box.addView(header)
-
-        val search = EditText(context)
-        search.hint = "Search applications"
-        search.setHintTextColor(muted)
-        search.setTextColor(text)
-        search.textSize = 15f
-        search.singleLine = true
-        search.background = rounded(panel2, dp(10))
-        search.setPadding(dp(14), 0, dp(14), 0)
-
-        box.addView(
-            search,
-            LinearLayout.LayoutParams(-1, dp(50))
-        )
-
-        addLauncherItem(box, "🐧", "Linux Applications") {
-            showLinux()
-        }
-
-        addLauncherItem(box, "⌘", "Debian Terminal") {
-            showTerminal()
-        }
-
-        addLauncherItem(box, "▤", "Files") {
-            showFiles()
-        }
-
-        addLauncherItem(box, "⚙", "Settings") {
-            showSettings()
-        }
-
-        addLauncherItem(box, "📱", "Android Applications") {
-            showAndroidApps()
-        }
-
-        createWindow(
-            "METMC Applications",
-            box,
-            dp(420),
-            dp(500)
-        )
-    }
-
-    private fun addLauncherItem(
-        parent: LinearLayout,
-        icon: String,
-        name: String,
-        action: () -> Unit
-    ) {
-        val b = Button(context)
-        b.text = "$icon   $name"
-        b.textSize = 15f
-        b.setTextColor(text)
-        b.setAllCaps(false)
-        b.gravity = Gravity.LEFT or Gravity.CENTER_VERTICAL
-        b.setOnClickListener { action() }
-
-        parent.addView(
-            b,
-            LinearLayout.LayoutParams(-1, dp(58))
-        )
-    }
-
-    private fun showLinux() {
-        val box = LinearLayout(context)
-        box.orientation = LinearLayout.VERTICAL
-        box.setPadding(dp(18), dp(18), dp(18), dp(18))
-
-        addSectionHeader(box, "Linux Subsystem", "Debian ARM64")
-
-        addInfo(box, "●  Debian environment")
-        addInfo(box, "●  Root integration")
-        addInfo(box, "●  Linux application support")
-
-        addLauncherItem(box, "⌘", "Terminal") {
-            showTerminal()
-        }
-
-        addLauncherItem(box, "▦", "Linux Applications") {
-            showLinuxApps()
-        }
-
-        addLauncherItem(box, "▣", "Linux Desktop") {
-            try {
-                context.startActivity(
-                    Intent(context, LinuxDesktopActivity::class.java)
-                )
-            } catch (e: Exception) {
-                toast("Linux desktop unavailable")
-            }
-        }
-
-        createWindow(
-            "METMC Linux",
-            box,
-            dp(460),
-            dp(440)
-        )
-    }
-
-    private fun showTerminal() {
-        val box = LinearLayout(context)
-        box.orientation = LinearLayout.VERTICAL
-        box.background = rounded(Color.rgb(7, 8, 10), dp(12))
-
-        val terminalBar = LinearLayout(context)
-        terminalBar.gravity = Gravity.CENTER_VERTICAL
-        terminalBar.setPadding(dp(14), 0, dp(6), 0)
-        terminalBar.background = rounded(panel2, dp(10))
-
-        val title = TextView(context)
-        title.text = "●  Debian Terminal"
-        title.textSize = 14f
-        title.typeface = Typeface.DEFAULT_BOLD
-        title.setTextColor(accent)
-
-        terminalBar.addView(
-            title,
-            LinearLayout.LayoutParams(0, dp(48), 1f)
-        )
-
-        val clear = button("Clear")
-        terminalBar.addView(
-            clear,
-            LinearLayout.LayoutParams(dp(70), dp(44))
-        )
-
-        box.addView(
-            terminalBar,
-            LinearLayout.LayoutParams(-1, dp(50))
-        )
-
-        val scroll = ScrollView(context)
-
-        val output = TextView(context)
-        output.text =
-            "METMC OS Linux Terminal\n" +
-            "Debian ARM64\n" +
-            "────────────────────────────\n" +
-            "root@metmc:~# "
-
-        output.setTextColor(Color.rgb(225, 230, 235))
-        output.textSize = 14f
-        output.typeface = Typeface.MONOSPACE
-        output.setPadding(dp(14), dp(14), dp(14), dp(20))
-
-        scroll.addView(output)
-
-        box.addView(
-            scroll,
-            LinearLayout.LayoutParams(-1, 0, 1f)
-        )
-
-        val input = LinearLayout(context)
-        input.gravity = Gravity.CENTER_VERTICAL
-        input.setPadding(dp(10), dp(6), dp(10), dp(6))
-        input.background = rounded(panel2, dp(10))
-
-        val prompt = TextView(context)
-        prompt.text = "root@metmc:~$ "
-        prompt.textSize = 13f
-        prompt.typeface = Typeface.create(
-            Typeface.MONOSPACE,
-            Typeface.BOLD
-        )
-        prompt.setTextColor(accent)
-
-        input.addView(
-            prompt,
-            LinearLayout.LayoutParams(-2, dp(50))
-        )
-
-        val command = EditText(context)
-        command.singleLine = true
-        command.hint = "command"
-        command.setHintTextColor(muted)
-        command.setTextColor(text)
-        command.textSize = 14f
-        command.typeface = Typeface.MONOSPACE
-        command.background = null
-
-        input.addView(
-            command,
-            LinearLayout.LayoutParams(0, dp(50), 1f)
-        )
-
-        val run = button("▶")
-        input.addView(
-            run,
-            LinearLayout.LayoutParams(dp(55), dp(45))
-        )
-
-        box.addView(
-            input,
-            LinearLayout.LayoutParams(-1, dp(62))
-        )
-
-        val execute = {
-            val cmd = command.text.toString().trim()
-
-            if (cmd.isNotEmpty()) {
-                output.append(cmd + "\n")
-                command.setText("")
-
-                runLinuxCommand(cmd) { result ->
-                    output.append(
-                        result + "\n\nroot@metmc:~# "
-                    )
-
-                    scroll.post {
-                        scroll.fullScroll(View.FOCUS_DOWN)
-                    }
-                }
-            }
-        }
-
-        run.setOnClickListener { execute() }
-
-        command.setOnEditorActionListener { _, _, event ->
-            if (event != null &&
-                event.keyCode == KeyEvent.KEYCODE_ENTER) {
-                execute()
-                true
-            } else {
-                false
-            }
-        }
-
-        clear.setOnClickListener {
-            output.text = "root@metmc:~# "
-            command.requestFocus()
-        }
-
-        createWindow(
-            "Debian Terminal",
-            box,
-            dp(760),
-            dp(520)
-        )
-    }
-
-    private fun runLinuxCommand(
-        command: String,
-        callback: (String) -> Unit
-    ) {
-        Thread {
-            val result: String
-
-            try {
-                val process = Runtime.getRuntime().exec(
-                    arrayOf(
-                        "su",
-                        "-c",
-                        "export HOME=/root; " +
-                        "export USER=root; " +
-                        "export LANG=C.UTF-8; " +
-                        "export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin; " +
-                        "test -x /data/local/linux/rootfs/bin/bash && " +
-                        "chroot /data/local/linux/rootfs " +
-                        "/bin/bash -lc " +
-                        shellQuote(command)
-                    )
-                )
-
-                val input = process.inputStream
-                result = input.bufferedReader().use {
-                    it.readText()
-                }
-
-                process.waitFor()
-
-            } catch (e: Exception) {
-                result = "ERROR: ${e.message}"
-            }
-
-            activity?.runOnUiThread {
-                callback(result)
-            }
-        }.start()
-    }
-
-    private fun showLinuxApps() {
-        val box = LinearLayout(context)
-        box.orientation = LinearLayout.VERTICAL
-        box.setPadding(dp(18), dp(18), dp(18), dp(18))
-
-        addSectionHeader(
-            box,
-            "Linux Applications",
-            "Applications installed in Debian"
-        )
-
-        addLauncherItem(box, "⌘", "Terminal") {
-            showTerminal()
-        }
-
-        addLauncherItem(box, "▣", "Linux Desktop") {
-            try {
-                context.startActivity(
-                    Intent(context, LinuxDesktopActivity::class.java)
-                )
-            } catch (e: Exception) {
-                toast("Linux desktop unavailable")
-            }
-        }
-
-        addInfo(
-            box,
-            "Application discovery is provided by the Debian subsystem."
-        )
-
-        createWindow(
-            "Linux Applications",
-            box,
-            dp(500),
-            dp(430)
-        )
-    }
-
-    private fun showFiles() {
-        val box = LinearLayout(context)
-        box.orientation = LinearLayout.VERTICAL
-        box.setPadding(dp(18), dp(18), dp(18), dp(18))
-
-        addSectionHeader(
-            box,
-            "Files",
-            "Android storage"
-        )
-
-        addLauncherItem(box, "📁", "Open File Picker") {
-            try {
-                val intent = Intent(Intent.ACTION_OPEN_DOCUMENT)
-                intent.type = "*/*"
-                intent.addCategory(Intent.CATEGORY_OPENABLE)
-                activity?.startActivityForResult(intent, 100)
-            } catch (e: Exception) {
-                toast("File picker unavailable")
-            }
-        }
-
-        addInfo(box, "Android storage access")
-        addInfo(box, "Documents and media")
-        addInfo(box, "Linux root filesystem")
-
-        createWindow(
-            "Files",
-            box,
-            dp(480),
-            dp(390)
-        )
-    }
-
-    private fun showAndroidApps() {
-        val box = LinearLayout(context)
-        box.orientation = LinearLayout.VERTICAL
-        box.setPadding(dp(18), dp(18), dp(18), dp(18))
-
-        addSectionHeader(
-            box,
-            "Android Applications",
-            "Installed Android apps"
-        )
-
-        try {
-            val pm = context.packageManager
-
-            val query = Intent(
-                Intent.ACTION_MAIN,
-                null
-            )
-
-            query.addCategory(Intent.CATEGORY_LAUNCHER)
-
-            val apps = pm.queryIntentActivities(query, 0)
-
-            for (info in apps) {
-                val name =
-                    info.loadLabel(pm).toString()
-
-                addLauncherItem(
-                    box,
-                    "▣",
-                    name
-                ) {
-                    try {
-                        val intent =
-                            pm.getLaunchIntentForPackage(
-                                info.activityInfo.packageName
-                            )
-
-                        if (intent != null)
-                            context.startActivity(intent)
-
-                    } catch (e: Exception) {
-                        toast("Unable to launch $name")
-                    }
-                }
-            }
-
-        } catch (e: Exception) {
-            addInfo(
-                box,
-                "Unable to enumerate applications."
-            )
-        }
-
-        createWindow(
-            "Android Applications",
-            box,
-            dp(520),
-            dp(560)
-        )
-    }
-
-    private fun showSettings() {
-        val box = LinearLayout(context)
-        box.orientation = LinearLayout.VERTICAL
-        box.setPadding(dp(18), dp(18), dp(18), dp(18))
-
-        addSectionHeader(
-            box,
-            "Settings",
-            "METMC OS configuration"
-        )
-
-        addLauncherItem(box, "🖼", "Wallpaper") {
-            chooseWallpaper()
-        }
-
-        addLauncherItem(box, "▣", "Display") {
-            toast("Display settings")
-        }
-
-        addLauncherItem(box, "🐧", "Linux Subsystem") {
-            showLinux()
-        }
-
-        addLauncherItem(box, "ℹ", "About METMC OS") {
-            showAbout()
-        }
-
-        createWindow(
-            "Settings",
-            box,
-            dp(460),
-            dp(450)
-        )
-    }
-
-    private fun showAbout() {
-        val box = LinearLayout(context)
-        box.orientation = LinearLayout.VERTICAL
-        box.setPadding(dp(24), dp(24), dp(24), dp(24))
-
-        val logo = TextView(context)
-        logo.text = "◈"
-        logo.textSize = 48f
-        logo.setTextColor(accent)
-        logo.gravity = Gravity.CENTER
-
-        box.addView(
-            logo,
-            LinearLayout.LayoutParams(-1, dp(70))
-        )
-
-        addSectionHeader(
-            box,
-            "METMC OS",
-            "Android Desktop Environment"
-        )
-
-        addInfo(box, "Version 6")
-        addInfo(box, "Native Java/Kotlin desktop")
-        addInfo(box, "64-bit ARM")
-        addInfo(box, "Android + Debian Linux")
-
-        createWindow(
-            "About METMC OS",
-            box,
-            dp(420),
-            dp(400)
-        )
-    }
-
-    private fun addSectionHeader(
-        parent: LinearLayout,
-        titleText: String,
-        subtitleText: String
-    ) {
-        val title = TextView(context)
-        title.text = titleText
-        title.textSize = 22f
-        title.typeface = Typeface.DEFAULT_BOLD
-        title.setTextColor(text)
-
-        parent.addView(
-            title,
-            LinearLayout.LayoutParams(-1, dp(38))
-        )
-
-        val subtitle = TextView(context)
-        subtitle.text = subtitleText
-        subtitle.textSize = 13f
-        subtitle.setTextColor(muted)
-
-        parent.addView(
-            subtitle,
-            LinearLayout.LayoutParams(-1, dp(35))
-        )
-    }
-
-    private fun addInfo(
-        parent: LinearLayout,
-        message: String
-    ) {
-        val t = TextView(context)
-        t.text = message
-        t.textSize = 14f
-        t.setTextColor(muted)
-        t.setPadding(dp(8), dp(7), dp(8), dp(7))
-
-        parent.addView(
-            t,
-            LinearLayout.LayoutParams(-1, dp(38))
-        )
-    }
-
-    private fun button(label: String): Button {
-        val b = Button(context)
-        b.text = label
-        b.textSize = 14f
-        b.setTextColor(text)
-        b.setAllCaps(false)
-        b.setPadding(0, 0, 0, 0)
-        b.background = rounded(panel2, dp(9))
-        return b
     }
 
     private fun createWindow(
-        titleText: String,
-        content: View,
-        width: Int,
-        height: Int
-    ) {
+        title: String,
+        content: View
+    ): View {
+
         val window = LinearLayout(context)
         window.orientation = LinearLayout.VERTICAL
-        window.background = rounded(panel, dp(14))
-        window.elevation = dp(12).toFloat()
 
-        val bar = LinearLayout(context)
-        bar.gravity = Gravity.CENTER_VERTICAL
-        bar.setPadding(dp(10), 0, dp(5), 0)
-        bar.background = rounded(panel2, dp(14))
+        val background = GradientDrawable()
+        background.setColor(
+            Color.rgb(30,32,40)
+        )
+        background.cornerRadius =
+            dp(12).toFloat()
 
-        val title = TextView(context)
-        title.text = titleText
-        title.textSize = 14f
-        title.typeface = Typeface.DEFAULT_BOLD
-        title.setTextColor(text)
+        window.background = background
+        window.elevation = dp(10).toFloat()
 
-        bar.addView(
-            title,
-            LinearLayout.LayoutParams(0, dp(46), 1f)
+        val titleBar = LinearLayout(context)
+        titleBar.gravity =
+            Gravity.CENTER_VERTICAL
+
+        titleBar.setBackgroundColor(
+            Color.rgb(45,47,57)
         )
 
-        val minimize = button("—")
-        val maximize = button("□")
-        val close = button("×")
+        val titleText = TextView(context)
+        titleText.text = title
+        titleText.textSize = 14f
+        titleText.setTextColor(Color.WHITE)
+        titleText.setPadding(
+            dp(14),
+            0,
+            dp(8),
+            0
+        )
 
-        bar.addView(
+        titleBar.addView(
+            titleText,
+            LinearLayout.LayoutParams(
+                0,
+                dp(44),
+                1f
+            )
+        )
+
+        val minimize = windowButton("—")
+        val maximize = windowButton("□")
+        val close = windowButton("×")
+
+        titleBar.addView(
             minimize,
-            LinearLayout.LayoutParams(dp(46), dp(42))
+            LinearLayout.LayoutParams(
+                dp(48),
+                dp(44)
+            )
         )
 
-        bar.addView(
+        titleBar.addView(
             maximize,
-            LinearLayout.LayoutParams(dp(46), dp(42))
+            LinearLayout.LayoutParams(
+                dp(48),
+                dp(44)
+            )
         )
 
-        bar.addView(
+        titleBar.addView(
             close,
-            LinearLayout.LayoutParams(dp(46), dp(42))
+            LinearLayout.LayoutParams(
+                dp(48),
+                dp(44)
+            )
         )
+
+        window.addView(titleBar)
 
         window.addView(
-            bar,
-            LinearLayout.LayoutParams(-1, dp(50))
-        )
-
-        val holder = FrameLayout(context)
-        holder.setPadding(dp(3), dp(3), dp(3), dp(3))
-        holder.addView(
             content,
-            FrameLayout.LayoutParams(-1, -1)
+            LinearLayout.LayoutParams(
+                MATCH_PARENT,
+                0,
+                1f
+            )
         )
 
-        window.addView(
-            holder,
-            LinearLayout.LayoutParams(-1, 0, 1f)
+        val params = LayoutParams(
+            dp(520),
+            dp(360)
         )
 
-        val p = LayoutParams(width, height)
+        params.leftMargin =
+            dp(30 + windows.size * 18)
 
-        p.leftMargin =
-            dp(35 + ((windows.size * 22) % 180))
+        params.topMargin =
+            dp(30 + windows.size * 18)
 
-        p.topMargin =
-            dp(30 + ((windows.size * 22) % 130))
+        desktopArea.addView(
+            window,
+            params
+        )
 
-        desktop.addView(window, p)
         windows.add(window)
 
-        window.bringToFront()
+        /*
+         * Every application automatically gets
+         * a taskbar button.
+         */
+        val taskButton = Button(context)
+
+        taskButton.text = title
+        taskButton.textSize = 12f
+        taskButton.setTextColor(Color.WHITE)
+        taskButton.setAllCaps(false)
+        taskButton.maxLines = 1
+        taskButton.ellipsize =
+            android.text.TextUtils.TruncateAt.END
+
+        taskButton.setOnClickListener {
+
+            if (window.visibility != VISIBLE) {
+                window.visibility = VISIBLE
+                window.bringToFront()
+            } else {
+                window.bringToFront()
+            }
+        }
+
+        taskbar.addView(
+            taskButton,
+            LinearLayout.LayoutParams(
+                dp(150),
+                dp(46)
+            )
+        )
+
+        window.setTag(taskButton)
 
         minimize.setOnClickListener {
-            window.visibility = View.GONE
+            window.visibility = GONE
         }
 
         maximize.setOnClickListener {
-            val lp = window.layoutParams as LayoutParams
 
-            if (lp.width == MATCH_PARENT) {
-                lp.width = width
-                lp.height = height
-                lp.leftMargin = dp(35)
-                lp.topMargin = dp(30)
-                window.layoutParams = lp
+            val p = window.layoutParams
+
+            if (window.getTag(R.id.metmc_maximized_tag) == true) {
+
+                p.width = dp(520)
+                p.height = dp(360)
+
+                window.layoutParams = p
+
+                window.x =
+                    dp(30 + (windows.indexOf(window).coerceAtLeast(0) * 18)).toFloat()
+
+                window.y =
+                    dp(30 + (windows.indexOf(window).coerceAtLeast(0) * 18)).toFloat()
+
+                window.setTag(
+                    R.id.metmc_maximized_tag,
+                    false
+                )
+
             } else {
-                lp.width = MATCH_PARENT
-                lp.height = desktop.height
-                lp.leftMargin = 0
-                lp.topMargin = 0
-                window.layoutParams = lp
+
+                p.width = MATCH_PARENT
+                p.height =
+                    desktopArea.height - dp(58)
+
+                window.layoutParams = p
+
+                window.x = 0f
+                window.y = 0f
+
+                window.setTag(
+                    R.id.metmc_maximized_tag,
+                    true
+                )
             }
 
             window.bringToFront()
         }
 
         close.setOnClickListener {
-            desktop.removeView(window)
+
+            desktopArea.removeView(window)
+            taskbar.removeView(taskButton)
             windows.remove(window)
         }
 
-        makeDraggable(window, bar)
+        makeDraggable(
+            window,
+            titleBar
+        )
+
+        window.bringToFront()
+
+        return window
+    }
+
+    private fun windowButton(
+        text: String
+    ): Button {
+
+        val b = Button(context)
+
+        b.text = text
+        b.textSize = 16f
+        b.setTextColor(Color.WHITE)
+        b.setAllCaps(false)
+        b.setPadding(0,0,0,0)
+
+        return b
     }
 
     private fun makeDraggable(
         window: View,
         bar: View
     ) {
+
         var downX = 0f
         var downY = 0f
+
         var startX = 0f
         var startY = 0f
 
         bar.setOnTouchListener { _, event ->
-            when (event.action) {
+
+            when(event.action) {
+
                 MotionEvent.ACTION_DOWN -> {
+
                     downX = event.rawX
                     downY = event.rawY
+
                     startX = window.x
                     startY = window.y
+
                     window.bringToFront()
+
                     true
                 }
 
                 MotionEvent.ACTION_MOVE -> {
+
                     window.x =
-                        (startX + event.rawX - downX)
-                            .coerceAtLeast(0f)
+                        startX +
+                        event.rawX -
+                        downX
 
                     window.y =
-                        (startY + event.rawY - downY)
-                            .coerceAtLeast(0f)
+                        startY +
+                        event.rawY -
+                        downY
 
                     true
                 }
@@ -919,39 +406,104 @@ class MetmcDesktop(context: Context) : FrameLayout(context) {
         }
     }
 
+    /*
+     * Optional launcher window.
+     *
+     * Linux is NOT a separate desktop feature anymore.
+     * Linux applications should be launched through the
+     * same application/window system as Android applications.
+     */
+    fun showLauncher() {
+
+        val box = LinearLayout(context)
+        box.orientation =
+            LinearLayout.VERTICAL
+
+        box.setPadding(
+            dp(16),
+            dp(12),
+            dp(16),
+            dp(12)
+        )
+
+        val title = TextView(context)
+        title.text = "METMC Applications"
+        title.textSize = 21f
+        title.setTextColor(Color.WHITE)
+        title.setPadding(
+            dp(4),
+            dp(4),
+            dp(4),
+            dp(12)
+        )
+
+        box.addView(title)
+
+        val android = Button(context)
+        android.text = "Android Applications"
+        android.setAllCaps(false)
+        android.setTextColor(Color.WHITE)
+
+        box.addView(
+            android,
+            LinearLayout.LayoutParams(
+                MATCH_PARENT,
+                dp(55)
+            )
+        )
+
+        val linux = Button(context)
+        linux.text = "Linux Applications"
+        linux.setAllCaps(false)
+        linux.setTextColor(Color.WHITE)
+
+        box.addView(
+            linux,
+            LinearLayout.LayoutParams(
+                MATCH_PARENT,
+                dp(55)
+            )
+        )
+
+        createWindow(
+            "Applications",
+            box
+        )
+    }
+
     private fun chooseWallpaper() {
+
         if (activity == null)
             return
 
-        try {
-            val intent =
-                Intent(Intent.ACTION_OPEN_DOCUMENT)
-
-            intent.type = "image/*"
-
-            intent.addCategory(
-                Intent.CATEGORY_OPENABLE
+        val intent =
+            Intent(
+                Intent.ACTION_OPEN_DOCUMENT
             )
 
-            intent.addFlags(
-                Intent.FLAG_GRANT_READ_URI_PERMISSION or
-                Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION
-            )
+        intent.type = "image/*"
 
-            activity.startActivityForResult(
-                intent,
-                9001
-            )
+        intent.addCategory(
+            Intent.CATEGORY_OPENABLE
+        )
 
-        } catch (e: Exception) {
-            toast("Wallpaper picker unavailable")
-        }
+        intent.addFlags(
+            Intent.FLAG_GRANT_READ_URI_PERMISSION or
+            Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION
+        )
+
+        activity.startActivityForResult(
+            intent,
+            9001
+        )
     }
 
     fun applyWallpaper(uri: Uri) {
+
         wallpaperUri = uri
 
         try {
+
             val stream: InputStream =
                 context.contentResolver
                     .openInputStream(uri)
@@ -963,52 +515,28 @@ class MetmcDesktop(context: Context) : FrameLayout(context) {
 
             stream.close()
 
-            if (bitmap != null) {
-                val drawable =
+            if(bitmap != null) {
+
+                desktopArea.background =
                     android.graphics.drawable.BitmapDrawable(
                         resources,
                         bitmap
                     )
-
-                drawable.gravity = Gravity.CENTER
-
-                desktop.background = drawable
             }
 
-        } catch (e: Exception) {
-            toast("Wallpaper error: ${e.message}")
+        } catch(e: Exception) {
+
+            Toast.makeText(
+                context,
+                "Wallpaper error: ${e.message}",
+                Toast.LENGTH_LONG
+            ).show()
         }
     }
 
-    private fun shellQuote(value: String): String {
-        return "'" +
-            value.replace("'", "'\\''") +
-            "'"
-    }
-
-    private fun rounded(
-        color: Int,
-        radius: Int
-    ): GradientDrawable {
-        val d = GradientDrawable()
-        d.setColor(color)
-        d.cornerRadius = radius.toFloat()
-        d.setStroke(dp(1), border)
-        return d
-    }
-
-    private fun toast(message: String) {
-        Toast.makeText(
-            context,
-            message,
-            Toast.LENGTH_SHORT
-        ).show()
-    }
-
-    private fun dp(value: Int): Int {
-        return (
+    private fun dp(value: Int): Int =
+        (
             value *
             resources.displayMetrics.density
         ).toInt()
-    }
 }
