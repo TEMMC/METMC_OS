@@ -8,6 +8,7 @@ import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
 import android.widget.*
+import android.widget.FrameLayout
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -106,7 +107,7 @@ class XfceTaskbar(
 
         scroll.addView(
             windowArea,
-            HorizontalScrollView.LayoutParams(
+            FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT,
                 ViewGroup.LayoutParams.MATCH_PARENT
             )
