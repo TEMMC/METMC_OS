@@ -25,7 +25,9 @@ jobs:
           gradle-version: '8.11.1'
 
       - name: Build
-        run: gradle clean assembleDebug --stacktrace --info --console=plain --info 2>&1 | tee build.log; exit ${PIPESTATUS[0]} --info 2>&1 | tee build.log; exit ${PIPESTATUS[0]}
+        run: |
+          set -o pipefail
+          gradle clean assembleDebug --stacktrace --info --console=plain 2>&1 | tee build.log
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
