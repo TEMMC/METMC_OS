@@ -1,13 +1,18 @@
 package com.metmc.os.desktop
 
+import com.metmc.os.R
+
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.net.Uri
+import android.view.ViewGroup
 import android.view.Gravity
+import android.view.ViewGroup
 import android.view.MotionEvent
+import android.view.ViewGroup
 import android.view.View
 import android.widget.*
 import java.io.InputStream
@@ -38,8 +43,8 @@ class MetmcDesktop(
         addView(
             desktopArea,
             LayoutParams(
-                MATCH_PARENT,
-                MATCH_PARENT
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
             )
         )
 
@@ -68,7 +73,7 @@ class MetmcDesktop(
         center.addView(
             title,
             LinearLayout.LayoutParams(
-                MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT,
                 dp(60)
             )
         )
@@ -76,7 +81,7 @@ class MetmcDesktop(
         center.addView(
             subtitle,
             LinearLayout.LayoutParams(
-                MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT,
                 dp(45)
             )
         )
@@ -84,8 +89,8 @@ class MetmcDesktop(
         desktopArea.addView(
             center,
             FrameLayout.LayoutParams(
-                MATCH_PARENT,
-                MATCH_PARENT
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
             )
         )
     }
@@ -117,7 +122,7 @@ class MetmcDesktop(
         )
 
         val params = LayoutParams(
-            MATCH_PARENT,
+            ViewGroup.LayoutParams.MATCH_PARENT,
             dp(58)
         )
 
@@ -222,7 +227,7 @@ class MetmcDesktop(
         window.addView(
             content,
             LinearLayout.LayoutParams(
-                MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT,
                 0,
                 1f
             )
@@ -308,7 +313,7 @@ class MetmcDesktop(
 
             } else {
 
-                p.width = MATCH_PARENT
+                p.width = ViewGroup.LayoutParams.MATCH_PARENT
                 p.height =
                     desktopArea.height - dp(58)
 
@@ -447,7 +452,7 @@ class MetmcDesktop(
         box.addView(
             android,
             LinearLayout.LayoutParams(
-                MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT,
                 dp(55)
             )
         )
@@ -460,7 +465,7 @@ class MetmcDesktop(
         box.addView(
             linux,
             LinearLayout.LayoutParams(
-                MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT,
                 dp(55)
             )
         )
