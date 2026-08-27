@@ -446,69 +446,455 @@ public class MainActivity extends Activity {
     }
 
     void showApps() {
-        final Dialog d=new Dialog(this);
-        d.getWindow();
 
-        LinearLayout box=new LinearLayout(this);
+        final Dialog d = new Dialog(this);
+
+        LinearLayout box = new LinearLayout(this);
         box.setOrientation(LinearLayout.VERTICAL);
-        box.setPadding(dp(20),dp(20),dp(20),dp(20));
+        box.setPadding(
+            dp(18), dp(16),
+            dp(18), dp(16)
+        );
         box.setBackgroundColor(PANEL);
 
-        TextView h=tv("METMC OS • Applications",22);
-        h.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
-        box.addView(h,new LinearLayout.LayoutParams(-1,dp(55)));
+        TextView header =
+            tv("METMC OS • Applications",22);
 
-        EditText search=new EditText(this);
-        search.setHint("Search applications");
+        header.setTypeface(
+            Typeface.DEFAULT,
+            Typeface.BOLD
+        );
+
+        box.addView(
+            header,
+            new LinearLayout.LayoutParams(
+                -1,dp(52)
+            )
+        );
+
+        EditText search =
+            new EditText(this);
+
+        search.setHint(
+            "Search applications"
+        );
+
         search.setHintTextColor(GRAY);
         search.setTextColor(WHITE);
-        box.addView(search,new LinearLayout.LayoutParams(-1,dp(55)));
+        search.setSingleLine(true);
 
-        ScrollView scroll=new ScrollView(this);
-        LinearLayout list=new LinearLayout(this);
-        list.setOrientation(LinearLayout.VERTICAL);
+        box.addView(
+            search,
+            new LinearLayout.LayoutParams(
+                -1,dp(52)
+            )
+        );
 
-        PackageManager pm=getPackageManager();
-        Intent query=new Intent(Intent.ACTION_MAIN,null);
-        query.addCategory(Intent.CATEGORY_LAUNCHER);
+        ScrollView scroll =
+            new ScrollView(this);
 
-        List<ResolveInfo> apps=pm.queryIntentActivities(query,0);
+        LinearLayout list =
+            new LinearLayout(this);
 
-        for(ResolveInfo info:apps) {
-            String name=info.loadLabel(pm).toString();
+        list.setOrientation(
+            LinearLayout.VERTICAL
+        );
 
-            Button b=btn("▣  "+name);
-            b.setGravity(Gravity.LEFT|Gravity.CENTER_VERTICAL);
-            b.setOnClickListener(v -> {
+        /*
+         * ANDROID APPLICATIONS
+         */
+        TextView androidHeader =
+            tv("ANDROID",12);
+
+        androidHeader.setTextColor(GRAY);
+        androidHeader.setPadding(
+            dp(8),dp(12),
+            dp(8),dp(4)
+        );
+
+        list.addView(androidHeader);
+
+        PackageManager pm =
+            getPackageManager();
+
+        Intent query =
+            new Intent(
+                Intent.ACTION_MAIN,
+                null
+            );
+
+        query.addCategory(
+            Intent.CATEGORY_LAUNCHER
+        );
+
+        List<ResolveInfo> androidApps =
+            pm.queryIntentActivities(
+                query,
+                0
+            );
+
+        for(ResolveInfo info : androidApps) {
+
+            final String appName =
+                info.loadLabel(pm).toString();
+
+            final String packageName =
+                info.activityInfo.packageName;
+
+            Button app =
+                btn(appName);
+
+            app.setAllCaps(false);
+            app.setGravity(
+                Gravity.LEFT |
+                Gravity.CENTER_VERTICAL
+            );
+
+            app.setOnClickListener(v -> {
+
                 try {
-                    Intent launch=pm.getLaunchIntentForPackage(
-                        info.activityInfo.packageName);
-                    if(launch!=null) {
-                        AndroidWindowLauncher.launch(
-                            MainActivity.this,
-                            info.activityInfo.packageName
-                        );
-                    }
+
+                    AndroidWindowLauncher.launch(
+                        MainActivity.this,
+                        packageName
+                    );
+
+                    addRunningTask(
+                        appName,
+                        () -> {
+                            try {
+                                AndroidWindowLauncher.launch(
+                                    MainActivity.this,
+                                    packageName
+                                );
+                            } catch(Exception e) {
+                                panel(
+                                    "Launch error",
+                                    e.toString()
+                                );
+                            }
+                        }
+                    );
+
+                    d.dismiss();
+
                 } catch(Exception e) {
-                    panel("Launch error",e.toString());
+
+                    panel(
+                        "Launch error",
+                        e.toString()
+                    );
                 }
             });
 
-            list.addView(b,new LinearLayout.LayoutParams(-1,dp(58)));
+            list.addView(
+                app,
+                new LinearLayout.LayoutParams(
+                    -1,dp(52)
+                )
+            );
         }
+
+        /*
+         * LINUX APPLICATIONS
+         *
+         * Linux applications are now part of
+         * the same application list.
+         */
+        TextView linuxHeader =
+            tv("LINUX",12);
+
+        linuxHeader.setTextColor(GRAY);
+        linuxHeader.setPadding(
+            dp(8),dp(18),
+            dp(8),dp(4)
+        );
+
+        list.addView(linuxHeader);
+
+        TextView linuxLoading =
+            tv(
+                "Loading Linux applications...",
+                14
+            );
+
+        linuxLoading.setTextColor(GRAY);
+
+        list.addView(
+            linuxLoading,
+            new LinearLayout.LayoutParams(
+                -1,dp(48)
+            )
+        );
 
         scroll.addView(list);
-        box.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
+
+        box.addView(
+            scroll,
+            new LinearLayout.LayoutParams(
+                -1,0,1
+            )
+        );
+
+        Button close =
+            btn("Close");
+
+        close.setOnClickListener(
+            v -> d.dismiss()
+        );
+
+        box.addView(
+            close,
+            new LinearLayout.LayoutParams(
+                -1,dp(50)
+            )
+        );
 
         d.setContentView(box);
-        Window w=d.getWindow();
-        if(w!=null) {
-            w.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
-            w.setLayout(dp(700),dp(500));
-        }
         d.show();
-        if(d.getWindow()!=null)
-            d.getWindow().setLayout(dp(700),dp(500));
+
+        if(d.getWindow()!=null) {
+
+            d.getWindow().setLayout(
+                dp(700),
+                dp(620)
+            );
+        }
+
+        /*
+         * Load Linux applications away from
+         * the Android UI thread.
+         */
+        new Thread(() -> {
+
+            try {
+
+                String result =
+                    runLinuxCommandSync(
+                        "find /usr/share/applications " +
+                        "-name '*.desktop' -type f " +
+                        "2>/dev/null | sort"
+                    );
+
+                String[] files =
+                    result.split("\n");
+
+                runOnUiThread(() -> {
+
+                    list.removeView(
+                        linuxLoading
+                    );
+
+                    int count = 0;
+
+                    for(String file : files) {
+
+                        if(file.trim().isEmpty())
+                            continue;
+
+                        try {
+
+                            String data =
+                                runLinuxCommandSync(
+                                    "cat " +
+                                    shellQuote(file)
+                                );
+
+                            String name =
+                                desktopValue(
+                                    data,
+                                    "Name"
+                                );
+
+                            String exec =
+                                desktopValue(
+                                    data,
+                                    "Exec"
+                                );
+
+                            if(name == null ||
+                               name.trim().isEmpty())
+                                continue;
+
+                            if(exec == null ||
+                               exec.trim().isEmpty())
+                                continue;
+
+                            final String linuxName =
+                                name.trim();
+
+                            final String linuxExec =
+                                exec.trim();
+
+                            Button linuxApp =
+                                btn(linuxName);
+
+                            linuxApp.setAllCaps(false);
+
+                            linuxApp.setGravity(
+                                Gravity.LEFT |
+                                Gravity.CENTER_VERTICAL
+                            );
+
+                            linuxApp.setOnClickListener(v -> {
+
+                                LinuxGuiLauncher.launch(
+                                    MainActivity.this,
+                                    METMC_ROOTFS,
+                                    "export DISPLAY=:100; " +
+                                    "export XDG_RUNTIME_DIR=/tmp/metmc-runtime; " +
+                                    "mkdir -p /tmp/metmc-runtime; " +
+                                    "chmod 700 /tmp/metmc-runtime; " +
+                                    linuxExec +
+                                    " >/tmp/metmc-linux-app.log " +
+                                    "2>&1 &"
+                                );
+
+                                addRunningTask(
+                                    linuxName,
+                                    () -> LinuxGuiLauncher.launch(
+                                        MainActivity.this,
+                                        METMC_ROOTFS,
+                                        "export DISPLAY=:100; " +
+                                        "export XDG_RUNTIME_DIR=/tmp/metmc-runtime; " +
+                                        "mkdir -p /tmp/metmc-runtime; " +
+                                        "chmod 700 /tmp/metmc-runtime; " +
+                                        linuxExec +
+                                        " >/tmp/metmc-linux-app.log " +
+                                        "2>&1 &"
+                                    )
+                                );
+
+                                Toast.makeText(
+                                    MainActivity.this,
+                                    "Opening " + linuxName,
+                                    Toast.LENGTH_SHORT
+                                ).show();
+
+                                d.dismiss();
+                            });
+
+                            list.addView(
+                                linuxApp,
+                                new LinearLayout.LayoutParams(
+                                    -1,dp(52)
+                                )
+                            );
+
+                            count++;
+
+                        } catch(Exception ignored) {
+                        }
+                    }
+
+                    if(count == 0) {
+
+                        TextView empty =
+                            tv(
+                                "No Linux applications found.",
+                                14
+                            );
+
+                        empty.setTextColor(GRAY);
+
+                        empty.setPadding(
+                            dp(8),dp(16),
+                            dp(8),dp(16)
+                        );
+
+                        list.addView(empty);
+                    }
+                });
+
+            } catch(Exception e) {
+
+                runOnUiThread(() -> {
+
+                    list.removeView(
+                        linuxLoading
+                    );
+
+                    TextView error =
+                        tv(
+                            "Linux application service unavailable.",
+                            14
+                        );
+
+                    error.setTextColor(GRAY);
+
+                    list.addView(error);
+                });
+            }
+
+        }).start();
+    }
+
+    /*
+     * Adds a running application to the
+     * shared METMC taskbar.
+     *
+     * Android and Linux use exactly the
+     * same taskbar mechanism.
+     */
+    void addRunningTask(
+        String title,
+        Runnable launch
+    ) {
+
+        if(dock == null)
+            return;
+
+        for(int i = 0; i < dock.getChildCount(); i++) {
+
+            View child =
+                dock.getChildAt(i);
+
+            if(title.equals(
+                child.getTag()
+            )) {
+
+                child.setVisibility(
+                    View.VISIBLE
+                );
+
+                child.bringToFront();
+                return;
+            }
+        }
+
+        Button task =
+            btn(title);
+
+        task.setTag(title);
+        task.setTextSize(12);
+        task.setAllCaps(false);
+        task.setMaxLines(1);
+        task.setEllipsize(
+            android.text.TextUtils.TruncateAt.END
+        );
+
+        task.setOnClickListener(
+            v -> {
+                try {
+                    launch.run();
+                } catch(Exception e) {
+                    panel(
+                        "Application error",
+                        e.toString()
+                    );
+                }
+            }
+        );
+
+        dock.addView(
+            task,
+            new LinearLayout.LayoutParams(
+                dp(145),
+                dp(48)
+            )
+        );
+
+        task.bringToFront();
     }
 
     void openFiles() {
