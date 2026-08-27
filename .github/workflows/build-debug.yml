@@ -23,14 +23,23 @@ jobs:
 
       - name: Build
         run: |
-          set +e
-          gradle clean assembleDebug --stacktrace 2>&1 | tee build.log
+          set -o pipefail
+          echo "===== METMC OS BUILD START ====="
+          gradle clean assembleDebug --stacktrace --info --console=plain --warning-mode all 2>&1 | tee build.log
           status=${PIPESTATUS[0]}
 
+          echo
           echo "===== ACTUAL COMPILER ERRORS ====="
-          grep -nEi \
-            'error:|e: |unresolved reference|expecting|type mismatch|class, interface, enum|unclosed|cannot find symbol' \
-            build.log | head -100 || true
+          if [ "$status" -ne 0 ]; then
+            grep -nEi '(^|[[:space:]])(e:|error:|unresolved reference|type mismatch|expecting|cannot access|conflicting overloads|compilation error|CompilationErrorException|FAILED)' build.log || true
+          else
+            echo "No compiler errors."
+          fi
 
+          echo
           echo "===== BUILD RESULT ====="
-          exit "$status"
+          if [ "$status" -ne 0 ]; then
+            echo "BUILD FAILED"
+            exit "$status"
+          fi
+          echo "BUILD SUCCESSFUL"
