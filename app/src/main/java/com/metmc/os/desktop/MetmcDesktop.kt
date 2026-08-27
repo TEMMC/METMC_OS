@@ -10,9 +10,7 @@ import android.graphics.drawable.GradientDrawable
 import android.net.Uri
 import android.view.ViewGroup
 import android.view.Gravity
-import android.view.ViewGroup
 import android.view.MotionEvent
-import android.view.ViewGroup
 import android.view.View
 import android.widget.*
 import java.io.InputStream
