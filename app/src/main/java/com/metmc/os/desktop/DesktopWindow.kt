@@ -19,7 +19,6 @@ class DesktopWindow(
 ) : LinearLayout(context) {
 
     private var maximized = false
-
     private var normalX = 0f
     private var normalY = 0f
     private var normalWidth = 0
@@ -28,11 +27,12 @@ class DesktopWindow(
     init {
         orientation = VERTICAL
         elevation = dp(12).toFloat()
+        clipChildren = true
 
-        val background = GradientDrawable()
-        background.setColor(Color.rgb(30, 32, 40))
-        background.cornerRadius = dp(10).toFloat()
-        this.background = background
+        background = GradientDrawable().apply {
+            setColor(Color.rgb(30, 32, 40))
+            cornerRadius = dp(10).toFloat()
+        }
 
         createTitleBar()
 
@@ -47,27 +47,19 @@ class DesktopWindow(
     }
 
     private fun createTitleBar() {
+        val titleBar = LinearLayout(context).apply {
+            orientation = HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setBackgroundColor(Color.rgb(42, 45, 55))
+        }
 
-        val titleBar = LinearLayout(context)
-
-        titleBar.orientation = HORIZONTAL
-        titleBar.gravity = Gravity.CENTER_VERTICAL
-
-        titleBar.setBackgroundColor(
-            Color.rgb(42, 45, 55)
-        )
-
-        val titleText = TextView(context)
-        titleText.text = title
-        titleText.textSize = 14f
-        titleText.setTextColor(Color.WHITE)
-
-        titleText.setPadding(
-            dp(14),
-            0,
-            dp(8),
-            0
-        )
+        val titleText = TextView(context).apply {
+            text = title
+            textSize = 14f
+            setTextColor(Color.WHITE)
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(14), 0, dp(8), 0)
+        }
 
         titleBar.addView(
             titleText,
@@ -87,7 +79,7 @@ class DesktopWindow(
         titleBar.addView(close)
 
         minimize.setOnClickListener {
-            visibility = View.GONE
+            workspace.minimizeWindow(this)
         }
 
         maximize.setOnClickListener {
@@ -98,9 +90,7 @@ class DesktopWindow(
             workspace.removeWindow(this)
         }
 
-        titleBar.setOnTouchListener(
-            DragListener()
-        )
+        titleBar.setOnTouchListener(DragListener())
 
         addView(
             titleBar,
@@ -111,69 +101,62 @@ class DesktopWindow(
         )
     }
 
-    private fun createButton(
-        text: String
-    ): Button {
-
+    private fun createButton(text: String): Button {
         return Button(context).apply {
-
             this.text = text
             textSize = 16f
             setTextColor(Color.WHITE)
             setAllCaps(false)
+            minWidth = 0
+            minimumWidth = 0
+            setPadding(0, 0, 0, 0)
 
-            layoutParams =
-                LinearLayout.LayoutParams(
-                    dp(48),
-                    dp(44)
-                )
+            layoutParams = LinearLayout.LayoutParams(
+                dp(48),
+                dp(44)
+            )
         }
     }
 
     private fun toggleMaximize() {
-
-        val params =
-            layoutParams as? FrameLayout.LayoutParams
-                ?: return
+        val params = layoutParams as? FrameLayout.LayoutParams
+            ?: return
 
         if (!maximized) {
-
             normalX = x
             normalY = y
             normalWidth = params.width
             normalHeight = params.height
 
-            params.width =
-                FrameLayout.LayoutParams.MATCH_PARENT
-
-            params.height =
-                workspace.height
-
+            params.width = FrameLayout.LayoutParams.MATCH_PARENT
+            params.height = FrameLayout.LayoutParams.MATCH_PARENT
             params.leftMargin = 0
             params.topMargin = 0
+            params.rightMargin = 0
+            params.bottomMargin = 0
 
             layoutParams = params
-
+            x = 0f
+            y = 0f
             maximized = true
-
         } else {
-
             params.width = normalWidth
             params.height = normalHeight
+            params.leftMargin = 0
+            params.topMargin = 0
+            params.rightMargin = 0
+            params.bottomMargin = 0
 
             layoutParams = params
-
             x = normalX
             y = normalY
-
             maximized = false
         }
 
         bringToFront()
     }
 
-    private inner class DragListener :
-        View.OnTouchListener {
+    private inner class DragListener : OnTouchListener {
 
         private var downX = 0f
         private var downY = 0f
@@ -187,35 +170,26 @@ class DesktopWindow(
 
             if (maximized) return false
 
-            when (event.action) {
+            when (event.actionMasked) {
 
                 MotionEvent.ACTION_DOWN -> {
-
                     downX = event.rawX
                     downY = event.rawY
-
                     startX = x
                     startY = y
 
-                    bringToFront()
-
+                    workspace.focusWindow(this@DesktopWindow)
                     return true
                 }
 
                 MotionEvent.ACTION_MOVE -> {
-
-                    x =
-                        startX +
-                        event.rawX - downX
-
-                    y =
-                        startY +
-                        event.rawY - downY
-
+                    x = startX + event.rawX - downX
+                    y = startY + event.rawY - downY
                     return true
                 }
 
-                MotionEvent.ACTION_UP -> {
+                MotionEvent.ACTION_UP,
+                MotionEvent.ACTION_CANCEL -> {
                     return true
                 }
             }
@@ -226,16 +200,12 @@ class DesktopWindow(
 
     fun restore() {
         visibility = View.VISIBLE
-        bringToFront()
+        workspace.focusWindow(this)
     }
 
-    private fun dp(
-        value: Int
-    ): Int {
-
+    private fun dp(value: Int): Int {
         return (
-            value *
-            resources.displayMetrics.density
+            value * resources.displayMetrics.density
         ).toInt()
     }
 }
