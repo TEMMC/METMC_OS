@@ -21,7 +21,7 @@ class MetmcDesktop(
 
     private val activity = context as? Activity
 
-    private val desktopArea = FrameLayout(context)
+    private val desktopArea = DesktopWorkspace(context)
     private val taskbar = XfceTaskbar(context)
     private val windows = ArrayList<View>()
 
@@ -140,98 +140,28 @@ class MetmcDesktop(
         content: View
     ): View {
 
-        val window = LinearLayout(context)
-        window.orientation = LinearLayout.VERTICAL
-
-        val background = GradientDrawable()
-        background.setColor(
-            Color.rgb(30,32,40)
-        )
-        background.cornerRadius =
-            dp(12).toFloat()
-
-        window.background = background
-        window.elevation = dp(10).toFloat()
-
-        val titleBar = LinearLayout(context)
-        titleBar.gravity =
-            Gravity.CENTER_VERTICAL
-
-        titleBar.setBackgroundColor(
-            Color.rgb(45,47,57)
-        )
-
-        val titleText = TextView(context)
-        titleText.text = title
-        titleText.textSize = 14f
-        titleText.setTextColor(Color.WHITE)
-        titleText.setPadding(
-            dp(14),
-            0,
-            dp(8),
-            0
-        )
-
-        titleBar.addView(
-            titleText,
-            LinearLayout.LayoutParams(
-                0,
-                dp(44),
-                1f
-            )
-        )
-
-        val minimize = windowButton("—")
-        val maximize = windowButton("□")
-        val close = windowButton("×")
-
-        titleBar.addView(
-            minimize,
-            LinearLayout.LayoutParams(
-                dp(48),
-                dp(44)
-            )
-        )
-
-        titleBar.addView(
-            maximize,
-            LinearLayout.LayoutParams(
-                dp(48),
-                dp(44)
-            )
-        )
-
-        titleBar.addView(
-            close,
-            LinearLayout.LayoutParams(
-                dp(48),
-                dp(44)
-            )
-        )
-
-        window.addView(titleBar)
-
-        window.addView(
+        val window = DesktopWindow(
+            context,
+            title,
             content,
-            LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                0,
-                1f
-            )
+            desktopArea
         )
 
-        val params = LayoutParams(
+        val params = FrameLayout.LayoutParams(
             dp(520),
             dp(360)
         )
 
+        val offset =
+            windows.size * dp(18)
+
         params.leftMargin =
-            dp(30 + windows.size * 18)
+            dp(30) + offset
 
         params.topMargin =
-            dp(30 + windows.size * 18)
+            dp(30) + offset
 
-        desktopArea.addView(
+        desktopArea.addWindow(
             window,
             params
         )
@@ -242,66 +172,6 @@ class MetmcDesktop(
             title,
             window
         )
-
-        minimize.setOnClickListener {
-            window.visibility = GONE
-        }
-
-        maximize.setOnClickListener {
-
-            val p = window.layoutParams
-
-            if (window.getTag(R.id.metmc_maximized_tag) == true) {
-
-                p.width = dp(520)
-                p.height = dp(360)
-
-                window.layoutParams = p
-
-                window.x =
-                    dp(30 + (windows.indexOf(window).coerceAtLeast(0) * 18)).toFloat()
-
-                window.y =
-                    dp(30 + (windows.indexOf(window).coerceAtLeast(0) * 18)).toFloat()
-
-                window.setTag(
-                    R.id.metmc_maximized_tag,
-                    false
-                )
-
-            } else {
-
-                p.width = ViewGroup.LayoutParams.MATCH_PARENT
-                p.height =
-                    desktopArea.height - dp(58)
-
-                window.layoutParams = p
-
-                window.x = 0f
-                window.y = 0f
-
-                window.setTag(
-                    R.id.metmc_maximized_tag,
-                    true
-                )
-            }
-
-            window.bringToFront()
-        }
-
-        close.setOnClickListener {
-
-            taskbar.removeWindow(window)
-            desktopArea.removeView(window)
-            windows.remove(window)
-        }
-
-        makeDraggable(
-            window,
-            titleBar
-        )
-
-        window.bringToFront()
 
         return window
     }
