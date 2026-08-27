@@ -7,6 +7,9 @@ import android.graphics.Typeface;
 import android.graphics.drawable.ColorDrawable;
 import android.view.Gravity;
 import android.view.WindowManager;
+import android.graphics.drawable.ColorDrawable;
+import android.view.Gravity;
+import android.view.WindowManager;
 import android.view.KeyEvent;
 import android.view.View;
 import android.widget.*;
@@ -93,6 +96,15 @@ public class LinuxTerminalActivity extends Activity {
         root.addView(row);
 
         setContentView(root);
+
+        WindowManager.LayoutParams lp = getWindow().getAttributes();
+        lp.width = (int)(getResources().getDisplayMetrics().widthPixels * 0.90f);
+        lp.height = (int)(getResources().getDisplayMetrics().heightPixels * 0.80f);
+        lp.gravity = Gravity.CENTER;
+        lp.dimAmount = 0.35f;
+        getWindow().setAttributes(lp);
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND);
+        getWindow().setBackgroundDrawable(new ColorDrawable(Color.rgb(8, 8, 10)));
 
         WindowManager.LayoutParams lp = getWindow().getAttributes();
 
