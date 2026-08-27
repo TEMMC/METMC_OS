@@ -13,8 +13,9 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 class XfceTaskbar(
-    context: Context
-) : LinearLayout(context) {
+    context: Context,
+private val onMenuClick: () -> Unit = {},
+private val onHomeClick: () -> Unit = {}) : LinearLayout(context) {
 
     private val windowArea = LinearLayout(context)
     private val clock = TextView(context)
@@ -60,12 +61,8 @@ class XfceTaskbar(
         menu.setAllCaps(false)
 
         menu.setOnClickListener {
-            Toast.makeText(
-                context,
-                "METMC OS Applications",
-                Toast.LENGTH_SHORT
-            ).show()
-        }
+    onMenuClick()
+}
 
         addView(
             menu,
