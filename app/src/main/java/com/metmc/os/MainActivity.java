@@ -472,13 +472,8 @@ public class MainActivity extends Activity {
             )
         );
 
-        EditText search =
-            new EditText(this);
-
-        search.setHint(
-            "Search applications"
-        );
-
+        EditText search = new EditText(this);
+        search.setHint("Search applications");
         search.setHintTextColor(GRAY);
         search.setTextColor(WHITE);
         search.setSingleLine(true);
@@ -490,21 +485,23 @@ public class MainActivity extends Activity {
             )
         );
 
-        ScrollView scroll =
-            new ScrollView(this);
+        ScrollView scroll = new ScrollView(this);
 
-        LinearLayout list =
-            new LinearLayout(this);
-
-        list.setOrientation(
-            LinearLayout.VERTICAL
-        );
+        LinearLayout list = new LinearLayout(this);
+        list.setOrientation(LinearLayout.VERTICAL);
 
         /*
-         * ANDROID APPLICATIONS
+         * =========================================================
+         * ANDROID
+         * =========================================================
+         *
+         * Scan installed packages directly.
+         *
+         * This is deliberately NOT limited to
+         * ACTION_MAIN + CATEGORY_LAUNCHER.
          */
         TextView androidHeader =
-            tv("ANDROID",12);
+            tv("ANDROID APPLICATIONS",12);
 
         androidHeader.setTextColor(GRAY);
         androidHeader.setPadding(
@@ -514,35 +511,58 @@ public class MainActivity extends Activity {
 
         list.addView(androidHeader);
 
-        PackageManager pm =
-            getPackageManager();
+        PackageManager pm = getPackageManager();
 
-        Intent query =
-            new Intent(
-                Intent.ACTION_MAIN,
-                null
+        java.util.List<android.content.pm.ApplicationInfo> packages =
+            pm.getInstalledApplications(
+                PackageManager.GET_META_DATA
             );
 
-        query.addCategory(
-            Intent.CATEGORY_LAUNCHER
+        java.util.Collections.sort(
+            packages,
+            (a,b) -> {
+
+                String an =
+                    String.valueOf(
+                        pm.getApplicationLabel(a)
+                    );
+
+                String bn =
+                    String.valueOf(
+                        pm.getApplicationLabel(b)
+                    );
+
+                return an.compareToIgnoreCase(bn);
+            }
         );
 
-        List<ResolveInfo> androidApps =
-            pm.queryIntentActivities(
-                query,
-                0
-            );
+        int androidCount = 0;
 
-        for(ResolveInfo info : androidApps) {
-
-            final String appName =
-                info.loadLabel(pm).toString();
+        for(android.content.pm.ApplicationInfo info : packages) {
 
             final String packageName =
-                info.activityInfo.packageName;
+                info.packageName;
 
-            Button app =
-                btn(appName);
+            /*
+             * Find an activity that Android can actually launch.
+             */
+            final Intent launchIntent =
+                pm.getLaunchIntentForPackage(
+                    packageName
+                );
+
+            if(launchIntent == null)
+                continue;
+
+            final String appName =
+                String.valueOf(
+                    pm.getApplicationLabel(info)
+                ).trim();
+
+            if(appName.isEmpty())
+                continue;
+
+            Button app = btn(appName);
 
             app.setAllCaps(false);
             app.setGravity(
@@ -550,28 +570,56 @@ public class MainActivity extends Activity {
                 Gravity.CENTER_VERTICAL
             );
 
+            app.setTag(
+                "android:" + packageName
+            );
+
             app.setOnClickListener(v -> {
 
                 try {
 
-                    AndroidWindowLauncher.launch(
-                        MainActivity.this,
-                        packageName
+                    Intent launch =
+                        pm.getLaunchIntentForPackage(
+                            packageName
+                        );
+
+                    if(launch == null) {
+                        panel(
+                            "Application unavailable",
+                            appName +
+                            " does not have a launchable activity."
+                        );
+                        return;
+                    }
+
+                    launch.addFlags(
+                        Intent.FLAG_ACTIVITY_NEW_TASK |
+                        Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED
                     );
 
+                    startActivity(launch);
+
+                    /*
+                     * Add the application to the
+                     * unified METMC taskbar.
+                     */
                     addRunningTask(
                         appName,
                         () -> {
-                            try {
-                                AndroidWindowLauncher.launch(
-                                    MainActivity.this,
+
+                            Intent again =
+                                pm.getLaunchIntentForPackage(
                                     packageName
                                 );
-                            } catch(Exception e) {
-                                panel(
-                                    "Launch error",
-                                    e.toString()
+
+                            if(again != null) {
+
+                                again.addFlags(
+                                    Intent.FLAG_ACTIVITY_NEW_TASK |
+                                    Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED
                                 );
+
+                                startActivity(again);
                             }
                         }
                     );
@@ -582,7 +630,7 @@ public class MainActivity extends Activity {
 
                     panel(
                         "Launch error",
-                        e.toString()
+                        appName + "\n\n" + e
                     );
                 }
             });
@@ -593,16 +641,32 @@ public class MainActivity extends Activity {
                     -1,dp(52)
                 )
             );
+
+            androidCount++;
         }
 
+        TextView androidTotal =
+            tv(
+                androidCount +
+                " launchable Android applications",
+                12
+            );
+
+        androidTotal.setTextColor(GRAY);
+        androidTotal.setPadding(
+            dp(8),dp(8),
+            dp(8),dp(12)
+        );
+
+        list.addView(androidTotal);
+
         /*
-         * LINUX APPLICATIONS
-         *
-         * Linux applications are now part of
-         * the same application list.
+         * =========================================================
+         * LINUX
+         * =========================================================
          */
         TextView linuxHeader =
-            tv("LINUX",12);
+            tv("LINUX APPLICATIONS",12);
 
         linuxHeader.setTextColor(GRAY);
         linuxHeader.setPadding(
@@ -636,8 +700,7 @@ public class MainActivity extends Activity {
             )
         );
 
-        Button close =
-            btn("Close");
+        Button close = btn("Close");
 
         close.setOnClickListener(
             v -> d.dismiss()
@@ -653,7 +716,7 @@ public class MainActivity extends Activity {
         d.setContentView(box);
         d.show();
 
-        if(d.getWindow()!=null) {
+        if(d.getWindow() != null) {
 
             d.getWindow().setLayout(
                 dp(700),
@@ -662,8 +725,8 @@ public class MainActivity extends Activity {
         }
 
         /*
-         * Load Linux applications away from
-         * the Android UI thread.
+         * Linux application discovery runs in the
+         * background so the Android UI remains responsive.
          */
         new Thread(() -> {
 
@@ -677,7 +740,7 @@ public class MainActivity extends Activity {
                     );
 
                 String[] files =
-                    result.split("\n");
+                    result.split("\\n");
 
                 runOnUiThread(() -> {
 
@@ -685,7 +748,7 @@ public class MainActivity extends Activity {
                         linuxLoading
                     );
 
-                    int count = 0;
+                    int linuxCount = 0;
 
                     for(String file : files) {
 
@@ -730,10 +793,13 @@ public class MainActivity extends Activity {
                                 btn(linuxName);
 
                             linuxApp.setAllCaps(false);
-
                             linuxApp.setGravity(
                                 Gravity.LEFT |
                                 Gravity.CENTER_VERTICAL
+                            );
+
+                            linuxApp.setTag(
+                                "linux:" + linuxName
                             );
 
                             linuxApp.setOnClickListener(v -> {
@@ -752,24 +818,19 @@ public class MainActivity extends Activity {
 
                                 addRunningTask(
                                     linuxName,
-                                    () -> LinuxGuiLauncher.launch(
-                                        MainActivity.this,
-                                        METMC_ROOTFS,
-                                        "export DISPLAY=:100; " +
-                                        "export XDG_RUNTIME_DIR=/tmp/metmc-runtime; " +
-                                        "mkdir -p /tmp/metmc-runtime; " +
-                                        "chmod 700 /tmp/metmc-runtime; " +
-                                        linuxExec +
-                                        " >/tmp/metmc-linux-app.log " +
-                                        "2>&1 &"
-                                    )
+                                    () ->
+                                        LinuxGuiLauncher.launch(
+                                            MainActivity.this,
+                                            METMC_ROOTFS,
+                                            "export DISPLAY=:100; " +
+                                            "export XDG_RUNTIME_DIR=/tmp/metmc-runtime; " +
+                                            "mkdir -p /tmp/metmc-runtime; " +
+                                            "chmod 700 /tmp/metmc-runtime; " +
+                                            linuxExec +
+                                            " >/tmp/metmc-linux-app.log " +
+                                            "2>&1 &"
+                                        )
                                 );
-
-                                Toast.makeText(
-                                    MainActivity.this,
-                                    "Opening " + linuxName,
-                                    Toast.LENGTH_SHORT
-                                ).show();
 
                                 d.dismiss();
                             });
@@ -781,29 +842,26 @@ public class MainActivity extends Activity {
                                 )
                             );
 
-                            count++;
+                            linuxCount++;
 
                         } catch(Exception ignored) {
                         }
                     }
 
-                    if(count == 0) {
-
-                        TextView empty =
-                            tv(
-                                "No Linux applications found.",
-                                14
-                            );
-
-                        empty.setTextColor(GRAY);
-
-                        empty.setPadding(
-                            dp(8),dp(16),
-                            dp(8),dp(16)
+                    TextView linuxTotal =
+                        tv(
+                            linuxCount +
+                            " Linux applications",
+                            12
                         );
 
-                        list.addView(empty);
-                    }
+                    linuxTotal.setTextColor(GRAY);
+                    linuxTotal.setPadding(
+                        dp(8),dp(8),
+                        dp(8),dp(12)
+                    );
+
+                    list.addView(linuxTotal);
                 });
 
             } catch(Exception e) {
@@ -829,13 +887,6 @@ public class MainActivity extends Activity {
         }).start();
     }
 
-    /*
-     * Adds a running application to the
-     * shared METMC taskbar.
-     *
-     * Android and Linux use exactly the
-     * same taskbar mechanism.
-     */
     void addRunningTask(
         String title,
         Runnable launch
