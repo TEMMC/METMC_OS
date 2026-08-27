@@ -22,7 +22,7 @@ class MetmcDesktop(
     private val activity = context as? Activity
 
     private val desktopArea = FrameLayout(context)
-    private val taskbar = LinearLayout(context)
+    private val taskbar = XfceTaskbar(context)
     private val windows = ArrayList<View>()
 
     private var wallpaperUri: Uri? = null
@@ -105,146 +105,6 @@ class MetmcDesktop(
      */
     private fun createTaskbar() {
 
-        // One unified METMC OS taskbar.
-        // Applications are grouped by category.
-
-        val scroll = HorizontalScrollView(context)
-
-        scroll.isHorizontalScrollBarEnabled = false
-        scroll.setFillViewport(false)
-
-        taskbar.orientation = LinearLayout.HORIZONTAL
-        taskbar.gravity = Gravity.CENTER_VERTICAL
-
-        taskbar.setPadding(
-            dp(8),
-            dp(5),
-            dp(8),
-            dp(5)
-        )
-
-        taskbar.setBackgroundColor(
-            Color.rgb(25, 27, 34)
-        )
-
-        fun addCategory(
-            name: String,
-            items: List<String>
-        ) {
-            val category = LinearLayout(context)
-
-            category.orientation = LinearLayout.HORIZONTAL
-            category.gravity = Gravity.CENTER_VERTICAL
-
-            val label = TextView(context)
-
-            label.text = name
-            label.textSize = 11f
-            label.setTextColor(Color.LTGRAY)
-            label.gravity = Gravity.CENTER
-            label.setPadding(
-                dp(8),
-                0,
-                dp(4),
-                0
-            )
-
-            category.addView(
-                label,
-                LinearLayout.LayoutParams(
-                    dp(65),
-                    dp(46)
-                )
-            )
-
-            for (item in items) {
-
-                val button = Button(context)
-
-                button.text = item
-                button.textSize = 12f
-                button.setTextColor(Color.WHITE)
-                button.setAllCaps(false)
-                button.maxLines = 1
-                button.ellipsize =
-                    android.text.TextUtils.TruncateAt.END
-
-                category.addView(
-                    button,
-                    LinearLayout.LayoutParams(
-                        dp(125),
-                        dp(46)
-                    )
-                )
-
-                button.setOnClickListener {
-
-                    when (item) {
-
-                        "Home" -> {
-                            windows.forEach {
-                                it.visibility = VISIBLE
-                            }
-                        }
-
-                        "Files" -> {
-                            // Files application can be connected here.
-                        }
-
-                        "Settings" -> {
-                            // METMC settings can be connected here.
-                        }
-
-                        "Terminal" -> {
-                            // Terminal launcher can be connected here.
-                        }
-                    }
-                }
-            }
-
-            taskbar.addView(category)
-        }
-
-        addCategory(
-            "HOME",
-            listOf(
-                "Home"
-            )
-        )
-
-        addCategory(
-            "ANDROID",
-            listOf(
-                "Apps",
-                "Files"
-            )
-        )
-
-        addCategory(
-            "LINUX",
-            listOf(
-                "Terminal",
-                "Linux Apps"
-            )
-        )
-
-        addCategory(
-            "SYSTEM",
-            listOf(
-                "Settings",
-                "System Info"
-            )
-        )
-
-        addCategory(
-            "WINDOWS",
-            listOf(
-                "Open Windows"
-            )
-        )
-
-        scroll.addView(taskbar)
-
         val params = LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,
             dp(58)
@@ -253,7 +113,7 @@ class MetmcDesktop(
         params.gravity = Gravity.BOTTOM
 
         addView(
-            scroll,
+            taskbar,
             params
         )
     }
@@ -378,39 +238,10 @@ class MetmcDesktop(
 
         windows.add(window)
 
-        /*
-         * Every application automatically gets
-         * a taskbar button.
-         */
-        val taskButton = Button(context)
-
-        taskButton.text = title
-        taskButton.textSize = 12f
-        taskButton.setTextColor(Color.WHITE)
-        taskButton.setAllCaps(false)
-        taskButton.maxLines = 1
-        taskButton.ellipsize =
-            android.text.TextUtils.TruncateAt.END
-
-        taskButton.setOnClickListener {
-
-            if (window.visibility != VISIBLE) {
-                window.visibility = VISIBLE
-                window.bringToFront()
-            } else {
-                window.bringToFront()
-            }
-        }
-
-        taskbar.addView(
-            taskButton,
-            LinearLayout.LayoutParams(
-                dp(150),
-                dp(46)
-            )
+        taskbar.addWindow(
+            title,
+            window
         )
-
-        window.setTag(taskButton)
 
         minimize.setOnClickListener {
             window.visibility = GONE
@@ -460,8 +291,8 @@ class MetmcDesktop(
 
         close.setOnClickListener {
 
+            taskbar.removeWindow(window)
             desktopArea.removeView(window)
-            taskbar.removeView(taskButton)
             windows.remove(window)
         }
 
