@@ -168,89 +168,264 @@ public class MainActivity extends Activity {
     }
 
     void build() {
+
         root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setBackgroundColor(BG);
 
-        // TOP BAR
+        /*
+         * METMC OS UNIFIED DESKTOP
+         *
+         * Android and Linux are treated as applications,
+         * not separate desktop environments.
+         */
+
         LinearLayout top = new LinearLayout(this);
         top.setGravity(Gravity.CENTER_VERTICAL);
         top.setPadding(dp(16),0,dp(16),0);
         top.setBackgroundColor(PANEL);
 
         TextView logo = tv("◈  METMC OS",18);
-        logo.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
+        logo.setTypeface(
+            Typeface.DEFAULT,
+            Typeface.BOLD
+        );
 
-        top.addView(logo,new LinearLayout.LayoutParams(0,-1,1));
+        top.addView(
+            logo,
+            new LinearLayout.LayoutParams(
+                0,-1,1
+            )
+        );
 
         clock = tv("",14);
-        top.addView(clock,new LinearLayout.LayoutParams(-2,-1));
 
-        root.addView(top,new LinearLayout.LayoutParams(-1,dp(52)));
+        top.addView(
+            clock,
+            new LinearLayout.LayoutParams(
+                -2,-1
+            )
+        );
 
-        // DESKTOP
+        root.addView(
+            top,
+            new LinearLayout.LayoutParams(
+                -1,dp(52)
+            )
+        );
+
+        /*
+         * Desktop workspace.
+         */
         FrameLayout area = new FrameLayout(this);
+
         area.setBackgroundColor(BG);
 
-        LinearLayout center = new LinearLayout(this);
-        center.setOrientation(LinearLayout.VERTICAL);
+        LinearLayout center =
+            new LinearLayout(this);
+
+        center.setOrientation(
+            LinearLayout.VERTICAL
+        );
+
         center.setGravity(Gravity.CENTER);
 
-        TextView title = tv("METMC OS",38);
-        title.setGravity(Gravity.CENTER);
-        title.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
+        TextView title =
+            tv("METMC OS",38);
 
-        TextView sub = tv("Android Desktop Environment",16);
+        title.setGravity(Gravity.CENTER);
+
+        title.setTypeface(
+            Typeface.DEFAULT,
+            Typeface.BOLD
+        );
+
+        TextView sub =
+            tv(
+                "Android + Linux Desktop",
+                16
+            );
+
         sub.setGravity(Gravity.CENTER);
         sub.setTextColor(GRAY);
 
-        TextView ready = tv("● System Ready",14);
+        TextView ready =
+            tv("● System Ready",14);
+
         ready.setGravity(Gravity.CENTER);
-        ready.setTextColor(Color.rgb(100,220,140));
 
-        center.addView(title,new LinearLayout.LayoutParams(-1,dp(55)));
-        center.addView(sub,new LinearLayout.LayoutParams(-1,dp(35)));
-        center.addView(ready,new LinearLayout.LayoutParams(-1,dp(35)));
+        ready.setTextColor(
+            Color.rgb(100,220,140)
+        );
 
-        area.addView(center,new FrameLayout.LayoutParams(-1,-1));
+        center.addView(
+            title,
+            new LinearLayout.LayoutParams(
+                -1,dp(55)
+            )
+        );
 
-        // DOCK
+        center.addView(
+            sub,
+            new LinearLayout.LayoutParams(
+                -1,dp(35)
+            )
+        );
+
+        center.addView(
+            ready,
+            new LinearLayout.LayoutParams(
+                -1,dp(35)
+            )
+        );
+
+        area.addView(
+            center,
+            new FrameLayout.LayoutParams(
+                -1,-1
+            )
+        );
+
+        /*
+         * SINGLE APPLICATION TASKBAR
+         *
+         * No Linux button.
+         * No Android button.
+         * No wallpaper button.
+         * No settings button.
+         * No decorative icon buttons.
+         *
+         * Only currently opened applications appear here.
+         */
         dock = new LinearLayout(this);
-        dock.setGravity(Gravity.CENTER);
-        dock.setPadding(dp(8),dp(5),dp(8),dp(5));
+
+        dock.setOrientation(
+            LinearLayout.HORIZONTAL
+        );
+
+        dock.setGravity(
+            Gravity.CENTER_VERTICAL
+        );
+
+        dock.setPadding(
+            dp(8),
+            dp(5),
+            dp(8),
+            dp(5)
+        );
+
         dock.setBackgroundColor(PANEL);
 
-        addDock("☰\nApps", v -> showApps());
-        addDock("▣\nFiles", v -> openFiles());
-        addDock("🐧\nLinux", v -> linuxPanel());
-        addDock("⚙\nSettings", v -> settings());
-        addDock("⏻\nPower", v -> power());
+        FrameLayout.LayoutParams dockParams =
+            new FrameLayout.LayoutParams(
+                -1,
+                dp(58)
+            );
 
-        FrameLayout.LayoutParams dp =
-            new FrameLayout.LayoutParams(-1,dp(76));
-        dp.gravity = Gravity.BOTTOM;
-        dp.setMargins(dp(55),0,dp(55),dp(12));
+        dockParams.gravity =
+            Gravity.BOTTOM;
 
-        area.addView(dock,dp);
+        dockParams.setMargins(
+            dp(8),
+            0,
+            dp(8),
+            dp(8)
+        );
 
-        root.addView(area,new LinearLayout.LayoutParams(-1,0,1));
+        area.addView(
+            dock,
+            dockParams
+        );
 
-        // STATUS
-        LinearLayout bottom = new LinearLayout(this);
-        bottom.setGravity(Gravity.CENTER_VERTICAL);
-        bottom.setPadding(dp(14),0,dp(14),0);
-        bottom.setBackgroundColor(PANEL);
+        /*
+         * START / APPLICATIONS BUTTON
+         *
+         * This is the only permanent taskbar
+         * control. Running applications are added
+         * beside it.
+         */
+        Button apps = btn("Apps");
 
-        status = tv("● ONLINE",13);
-        status.setTextColor(Color.rgb(100,220,140));
+        apps.setTextSize(13);
+        apps.setAllCaps(false);
 
-        TextView device = tv("  Android Desktop",13);
+        apps.setOnClickListener(
+            v -> showApps()
+        );
+
+        dock.addView(
+            apps,
+            new LinearLayout.LayoutParams(
+                dp(82),
+                dp(48)
+            )
+        );
+
+        /*
+         * Workspace.
+         */
+        root.addView(
+            area,
+            new LinearLayout.LayoutParams(
+                -1,
+                0,
+                1
+            )
+        );
+
+        /*
+         * Small system status bar.
+         */
+        LinearLayout bottom =
+            new LinearLayout(this);
+
+        bottom.setGravity(
+            Gravity.CENTER_VERTICAL
+        );
+
+        bottom.setPadding(
+            dp(14),
+            0,
+            dp(14),
+            0
+        );
+
+        bottom.setBackgroundColor(
+            PANEL
+        );
+
+        TextView status =
+            tv("● METMC OS",13);
+
+        status.setTextColor(
+            Color.rgb(100,220,140)
+        );
+
+        TextView device =
+            tv("Android Desktop",13);
+
         device.setTextColor(GRAY);
 
-        bottom.addView(status,new LinearLayout.LayoutParams(0,-1,1));
-        bottom.addView(device,new LinearLayout.LayoutParams(-2,-1));
+        bottom.addView(
+            status,
+            new LinearLayout.LayoutParams(
+                0,-1,1
+            )
+        );
 
-        root.addView(bottom,new LinearLayout.LayoutParams(-1,dp(36)));
+        bottom.addView(
+            device,
+            new LinearLayout.LayoutParams(
+                -2,-1
+            )
+        );
+
+        root.addView(
+            bottom,
+            new LinearLayout.LayoutParams(
+                -1,dp(32)
+            )
+        );
 
         setContentView(root);
     }
