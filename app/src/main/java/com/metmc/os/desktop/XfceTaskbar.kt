@@ -68,7 +68,7 @@ class XfceTaskbar(
 
         addView(
             menu,
-            LayoutParams(
+            LinearLayout.LayoutParams(
                 dp(52),
                 ViewGroup.LayoutParams.MATCH_PARENT
             )
@@ -88,7 +88,7 @@ class XfceTaskbar(
 
         addView(
             button,
-            LayoutParams(
+            LinearLayout.LayoutParams(
                 dp(48),
                 ViewGroup.LayoutParams.MATCH_PARENT
             )
@@ -106,13 +106,13 @@ class XfceTaskbar(
 
         scroll.addView(
             windowArea,
-            HorizontalScrollView.LayoutParams(
+            HorizontalScrollView.LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT,
                 ViewGroup.LayoutParams.MATCH_PARENT
             )
         )
 
-        val params = LayoutParams(
+        val params = LinearLayout.LayoutParams(
             0,
             ViewGroup.LayoutParams.MATCH_PARENT
         )
@@ -137,7 +137,7 @@ class XfceTaskbar(
 
         addView(
             clock,
-            LayoutParams(
+            LinearLayout.LayoutParams(
                 dp(75),
                 ViewGroup.LayoutParams.MATCH_PARENT
             )
@@ -166,7 +166,7 @@ class XfceTaskbar(
             window.bringToFront()
         }
 
-        val params = LayoutParams(
+        val params = LinearLayout.LayoutParams(
             dp(130),
             dp(42)
         )
