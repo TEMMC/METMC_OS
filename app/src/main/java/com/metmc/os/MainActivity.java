@@ -2,6 +2,7 @@ package com.metmc.os;
 
 import com.metmc.os.linux.LinuxGuiEnvironment;
 import com.metmc.os.linux.LinuxGuiLauncher;
+import com.metmc.os.linux.DesktopWindow;
 
 import com.metmc.os.desktop.AndroidWindowLauncher;
 import com.metmc.os.desktop.MetmcDesktop;
