@@ -106,7 +106,7 @@ public class LinuxTerminalActivity extends Activity {
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND);
         getWindow().setBackgroundDrawable(new ColorDrawable(Color.rgb(8, 8, 10)));
 
-        WindowManager.LayoutParams lp = getWindow().getAttributes();
+        WindowManager.LayoutParams windowLp = getWindow().getAttributes();
 
         int screenW = getResources().getDisplayMetrics().widthPixels;
         int screenH = getResources().getDisplayMetrics().heightPixels;
