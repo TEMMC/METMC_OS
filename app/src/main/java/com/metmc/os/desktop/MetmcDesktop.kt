@@ -105,6 +105,14 @@ class MetmcDesktop(
      */
     private fun createTaskbar() {
 
+        // One unified METMC OS taskbar.
+        // Applications are grouped by category.
+
+        val scroll = HorizontalScrollView(context)
+
+        scroll.isHorizontalScrollBarEnabled = false
+        scroll.setFillViewport(false)
+
         taskbar.orientation = LinearLayout.HORIZONTAL
         taskbar.gravity = Gravity.CENTER_VERTICAL
 
@@ -116,8 +124,126 @@ class MetmcDesktop(
         )
 
         taskbar.setBackgroundColor(
-            Color.rgb(25,27,34)
+            Color.rgb(25, 27, 34)
         )
+
+        fun addCategory(
+            name: String,
+            items: List<String>
+        ) {
+            val category = LinearLayout(context)
+
+            category.orientation = LinearLayout.HORIZONTAL
+            category.gravity = Gravity.CENTER_VERTICAL
+
+            val label = TextView(context)
+
+            label.text = name
+            label.textSize = 11f
+            label.setTextColor(Color.LTGRAY)
+            label.gravity = Gravity.CENTER
+            label.setPadding(
+                dp(8),
+                0,
+                dp(4),
+                0
+            )
+
+            category.addView(
+                label,
+                LinearLayout.LayoutParams(
+                    dp(65),
+                    dp(46)
+                )
+            )
+
+            for (item in items) {
+
+                val button = Button(context)
+
+                button.text = item
+                button.textSize = 12f
+                button.setTextColor(Color.WHITE)
+                button.setAllCaps(false)
+                button.maxLines = 1
+                button.ellipsize =
+                    android.text.TextUtils.TruncateAt.END
+
+                category.addView(
+                    button,
+                    LinearLayout.LayoutParams(
+                        dp(125),
+                        dp(46)
+                    )
+                )
+
+                button.setOnClickListener {
+
+                    when (item) {
+
+                        "Home" -> {
+                            windows.forEach {
+                                it.visibility = VISIBLE
+                            }
+                        }
+
+                        "Files" -> {
+                            // Files application can be connected here.
+                        }
+
+                        "Settings" -> {
+                            // METMC settings can be connected here.
+                        }
+
+                        "Terminal" -> {
+                            // Terminal launcher can be connected here.
+                        }
+                    }
+                }
+            }
+
+            taskbar.addView(category)
+        }
+
+        addCategory(
+            "HOME",
+            listOf(
+                "Home"
+            )
+        )
+
+        addCategory(
+            "ANDROID",
+            listOf(
+                "Apps",
+                "Files"
+            )
+        )
+
+        addCategory(
+            "LINUX",
+            listOf(
+                "Terminal",
+                "Linux Apps"
+            )
+        )
+
+        addCategory(
+            "SYSTEM",
+            listOf(
+                "Settings",
+                "System Info"
+            )
+        )
+
+        addCategory(
+            "WINDOWS",
+            listOf(
+                "Open Windows"
+            )
+        )
+
+        scroll.addView(taskbar)
 
         val params = LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,
@@ -126,7 +252,10 @@ class MetmcDesktop(
 
         params.gravity = Gravity.BOTTOM
 
-        addView(taskbar, params)
+        addView(
+            scroll,
+            params
+        )
     }
 
     /*
