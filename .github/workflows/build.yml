@@ -2,7 +2,8 @@ name: Build METMC OS
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
   workflow_dispatch:
 
 jobs:
@@ -19,30 +20,55 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '8.11.1'
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
 
-      - name: Build
+      - name: Install Android SDK packages
+        shell: bash
+        run: |
+          yes | sdkmanager --licenses
+          sdkmanager \
+            "platform-tools" \
+            "platforms;android-29" \
+            "build-tools;34.0.0" \
+            "ndk;27.0.12077973" \
+            "cmake;3.22.1"
+
+      - name: Make Gradle wrapper executable
+        run: chmod +x ./gradlew
+
+      - name: Build and capture full log
         shell: bash
         run: |
           set -o pipefail
-          gradle clean assembleDebug --stacktrace 2>&1 | tee build.log
-          echo "===== KOTLIN ERRORS ====="
-          grep -nEi '(^e: |error:|unresolved reference|type mismatch|expecting|cannot access|overload resolution|conflicting overloads)' build.log || true
+          ./gradlew clean assembleDebug \
+            --stacktrace \
+            --info \
+            2>&1 | tee build.log
+
+      - name: Show compiler errors
+        if: always()
+        shell: bash
+        run: |
+          echo "========== ACTUAL COMPILER ERRORS =========="
+          grep -nEi -B5 -A15 \
+            '(^e: |^error: |unresolved reference|type mismatch|expecting|cannot access|overload resolution|conflicting overloads|Compilation error)' \
+            build.log | tail -400 || true
+
+          echo ""
+          echo "========== LAST 200 LINES =========="
+          tail -200 build.log || true
+
+      - name: Upload build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: METMC-OS-build-log
+          path: build.log
 
       - name: Upload APK
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: METMC-OS-debug
           path: app/build/outputs/apk/debug/*.apk
-
-
-      - name: Show Kotlin compilation errors
-        if: always()
-        run: |
-          echo "========== KOTLIN / JAVA ERRORS =========="
-          grep -nEi -B8 -A15 '(^e: |error:|unresolved reference|type mismatch|expecting|cannot access|overload resolution|conflicting overloads|Compilation error)' build.log | tail -300 || true
-          echo "========== LAST 300 LINES =========="
-          tail -300 build.log || true
