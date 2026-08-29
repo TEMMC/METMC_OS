@@ -124,40 +124,41 @@ public class LinuxTerminalActivity extends Activity {
 
         LinearLayout inputRow = new LinearLayout(this);
         inputRow.setOrientation(LinearLayout.HORIZONTAL);
-        inputRow.setPadding(
-                dp(8),
-                dp(6),
-                dp(8),
-                dp(8)
+        inputRow.setGravity(Gravity.CENTER_VERTICAL);
+        inputRow.setPadding(dp(10), dp(4), dp(10), dp(6));
+        inputRow.setBackgroundColor(Color.rgb(8, 8, 10));
+
+        TextView prompt = new TextView(this);
+        prompt.setText("root@metmc:~# ");
+        prompt.setTextColor(Color.rgb(120, 220, 120));
+        prompt.setTextSize(14);
+        prompt.setTypeface(Typeface.MONOSPACE);
+        prompt.setSingleLine(true);
+
+        inputRow.addView(
+                prompt,
+                new LinearLayout.LayoutParams(
+                        -2,
+                        dp(48)
+                )
         );
 
         command = new EditText(this);
         command.setSingleLine(true);
         command.setTextColor(Color.WHITE);
-        command.setHintTextColor(Color.GRAY);
-        command.setHint("Enter Linux command");
-        command.setTypeface(Typeface.MONOSPACE);
         command.setTextSize(14);
+        command.setTypeface(Typeface.MONOSPACE);
+        command.setBackgroundColor(Color.TRANSPARENT);
+        command.setPadding(0, 0, 0, 0);
+        command.setHint("");
         command.setImeOptions(EditorInfo.IME_ACTION_GO);
 
         inputRow.addView(
                 command,
                 new LinearLayout.LayoutParams(
                         0,
-                        dp(52),
+                        dp(48),
                         1
-                )
-        );
-
-        Button run = new Button(this);
-        run.setText("Run");
-        run.setAllCaps(false);
-
-        inputRow.addView(
-                run,
-                new LinearLayout.LayoutParams(
-                        dp(90),
-                        dp(52)
                 )
         );
 
@@ -165,11 +166,9 @@ public class LinuxTerminalActivity extends Activity {
                 inputRow,
                 new LinearLayout.LayoutParams(
                         -1,
-                        -2
+                        dp(58)
                 )
         );
-
-        run.setOnClickListener(v -> sendCommand());
 
         command.setOnEditorActionListener((v, actionId, event) -> {
             if (actionId == EditorInfo.IME_ACTION_GO) {
@@ -262,7 +261,7 @@ public class LinuxTerminalActivity extends Activity {
                 );
 
                 shellIn.write(
-                        "export PS1='root@metmc:\\w# '\n"
+                        "export PS1=''\n"
                 );
 
                 shellIn.flush();
