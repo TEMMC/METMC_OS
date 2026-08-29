@@ -242,7 +242,7 @@ public class LinuxTerminalActivity extends Activity {
                         quoteShell(shellCommand);
 
                 shell = new ProcessBuilder(
-                        "/system/bin/su",
+                        "/debug_ramdisk/su",
                         "-c",
                         chrootCommand
                 )
