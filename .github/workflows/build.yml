@@ -20,13 +20,18 @@ jobs:
           distribution: temurin
           java-version: '17'
 
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
       - name: Install Android SDK packages
         shell: bash
         run: |
-          sdkmanager --licenses < <(printf 'y\ny\ny\ny\ny\ny\ny\ny\ny\ny\ny\ny\n') || true
+          sdkmanager --licenses < <(printf 'y\n%.0s' {1..50}) || true
           sdkmanager \
             "platform-tools" \
             "platforms;android-29" \
@@ -38,15 +43,29 @@ jobs:
         shell: bash
         run: |
           set +e
-          gradle clean assembleDebug --stacktrace 2>&1 | tee build.log
-          BUILD_STATUS=${PIPESTATUS[0]}
+
+          gradle clean assembleDebug --stacktrace > build.log 2>&1
+          BUILD_STATUS=$?
+
+          echo "========== COMPILER ERRORS =========="
+
+          grep -nEi \
+            '(^e: file:|^e: |^error: |unresolved reference|type mismatch|expecting|cannot access|overload resolution|conflicting overloads)' \
+            build.log | head -100 || true
+
           echo ""
-          echo "========== FIRST COMPILER ERRORS =========="
-          grep -nEi -B5 -A15 '(^e: file:|^e: |error:|unresolved reference|type mismatch|expecting|cannot access|overload resolution|conflicting overloads)' build.log | head -300 || true
-          echo ""
-          echo "========== LAST 400 BUILD LINES =========="
-          tail -400 build.log || true
+          echo "========== LAST 150 BUILD LINES =========="
+
+          tail -150 build.log || true
+
           exit $BUILD_STATUS
+
+      - name: Upload build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: METMC-OS-build-log
+          path: build.log
 
       - name: Upload APK
         if: success()
