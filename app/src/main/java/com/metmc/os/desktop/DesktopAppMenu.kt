@@ -185,12 +185,11 @@ class DesktopAppMenu(
 
         addLinuxButton(
             root,
-            "Linux Desktop"
         ) {
             context.startActivity(
                 Intent(
                     context,
-                    com.metmc.os.linux.LinuxDesktopActivity::class.java
+                    com.metmc.os.linux.TerminalActivity::class.java
                 ).addFlags(
                     Intent.FLAG_ACTIVITY_NEW_TASK
                 )
