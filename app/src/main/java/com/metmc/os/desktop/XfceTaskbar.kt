@@ -8,26 +8,35 @@ import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
 import android.widget.*
-import android.widget.FrameLayout
 import java.text.SimpleDateFormat
 import java.util.*
 
 class XfceTaskbar(
     context: Context,
-private val onMenuClick: () -> Unit = {},
-private val onHomeClick: () -> Unit = {}) : LinearLayout(context) {
+    private val onMenuClick: () -> Unit = {},
+    private val onHomeClick: () -> Unit = {}
+) : LinearLayout(context) {
 
     private val windowArea = LinearLayout(context)
     private val clock = TextView(context)
 
+    private val windowButtons =
+        HashMap<View, Button>()
+
     private val handler = Handler()
+
     private val timeFormat =
-        SimpleDateFormat("HH:mm", Locale.getDefault())
+        SimpleDateFormat(
+            "HH:mm",
+            Locale.getDefault()
+        )
 
     init {
 
         orientation = HORIZONTAL
-        gravity = Gravity.CENTER_VERTICAL
+
+        gravity =
+            Gravity.CENTER_VERTICAL
 
         setPadding(
             dp(6),
@@ -41,11 +50,11 @@ private val onHomeClick: () -> Unit = {}) : LinearLayout(context) {
         )
 
         createMenuButton()
-        createLauncherButton(
-            "⌂"
-        )
+
+        createHomeButton()
 
         createWindowArea()
+
         createClock()
 
         updateClock()
@@ -56,13 +65,18 @@ private val onHomeClick: () -> Unit = {}) : LinearLayout(context) {
         val menu = Button(context)
 
         menu.text = "☰"
+
         menu.textSize = 18f
-        menu.setTextColor(Color.WHITE)
+
+        menu.setTextColor(
+            Color.WHITE
+        )
+
         menu.setAllCaps(false)
 
         menu.setOnClickListener {
-    onMenuClick()
-}
+            onMenuClick()
+        }
 
         addView(
             menu,
@@ -73,16 +87,24 @@ private val onHomeClick: () -> Unit = {}) : LinearLayout(context) {
         )
     }
 
-    private fun createLauncherButton(
-        text: String
-    ) {
+    private fun createHomeButton() {
 
-        val button = Button(context)
+        val button =
+            Button(context)
 
-        button.text = text
+        button.text = "⌂"
+
         button.textSize = 18f
-        button.setTextColor(Color.WHITE)
+
+        button.setTextColor(
+            Color.WHITE
+        )
+
         button.setAllCaps(false)
+
+        button.setOnClickListener {
+            onHomeClick()
+        }
 
         addView(
             button,
@@ -95,12 +117,17 @@ private val onHomeClick: () -> Unit = {}) : LinearLayout(context) {
 
     private fun createWindowArea() {
 
-        val scroll = HorizontalScrollView(context)
+        val scroll =
+            HorizontalScrollView(context)
 
-        scroll.isHorizontalScrollBarEnabled = false
+        scroll.isHorizontalScrollBarEnabled =
+            false
 
-        windowArea.orientation = HORIZONTAL
-        windowArea.gravity = Gravity.CENTER_VERTICAL
+        windowArea.orientation =
+            HORIZONTAL
+
+        windowArea.gravity =
+            Gravity.CENTER_VERTICAL
 
         scroll.addView(
             windowArea,
@@ -110,10 +137,11 @@ private val onHomeClick: () -> Unit = {}) : LinearLayout(context) {
             )
         )
 
-        val params = LinearLayout.LayoutParams(
-            0,
-            ViewGroup.LayoutParams.MATCH_PARENT
-        )
+        val params =
+            LinearLayout.LayoutParams(
+                0,
+                ViewGroup.LayoutParams.MATCH_PARENT
+            )
 
         params.weight = 1f
 
@@ -125,9 +153,15 @@ private val onHomeClick: () -> Unit = {}) : LinearLayout(context) {
 
     private fun createClock() {
 
-        clock.gravity = Gravity.CENTER
+        clock.gravity =
+            Gravity.CENTER
+
         clock.textSize = 14f
-        clock.setTextColor(Color.WHITE)
+
+        clock.setTextColor(
+            Color.WHITE
+        )
+
         clock.setTypeface(
             Typeface.DEFAULT,
             Typeface.BOLD
@@ -147,27 +181,47 @@ private val onHomeClick: () -> Unit = {}) : LinearLayout(context) {
         window: View
     ): Button {
 
-        val button = Button(context)
+        val existing =
+            windowButtons[window]
+
+        if (existing != null) {
+            return existing
+        }
+
+        val button =
+            Button(context)
 
         button.text = title
+
         button.textSize = 12f
-        button.setTextColor(Color.WHITE)
+
+        button.setTextColor(
+            Color.WHITE
+        )
+
         button.setAllCaps(false)
+
         button.maxLines = 1
 
         button.setOnClickListener {
 
-            if (window.visibility != View.VISIBLE) {
-                window.visibility = View.VISIBLE
+            if (
+                window.visibility !=
+                View.VISIBLE
+            ) {
+
+                window.visibility =
+                    View.VISIBLE
             }
 
             window.bringToFront()
         }
 
-        val params = LinearLayout.LayoutParams(
-            dp(130),
-            dp(42)
-        )
+        val params =
+            LinearLayout.LayoutParams(
+                dp(130),
+                dp(42)
+            )
 
         params.setMargins(
             dp(2),
@@ -181,20 +235,49 @@ private val onHomeClick: () -> Unit = {}) : LinearLayout(context) {
             params
         )
 
+        windowButtons[window] =
+            button
+
         return button
     }
 
     fun removeWindow(
-        button: View
+        window: View
     ) {
 
-        windowArea.removeView(button)
+        val button =
+            windowButtons.remove(window)
+                ?: return
+
+        windowArea.removeView(
+            button
+        )
+    }
+
+    fun minimizeWindow(
+        window: View
+    ) {
+
+        window.visibility =
+            View.GONE
+    }
+
+    fun restoreWindow(
+        window: View
+    ) {
+
+        window.visibility =
+            View.VISIBLE
+
+        window.bringToFront()
     }
 
     private fun updateClock() {
 
         clock.text =
-            timeFormat.format(Date())
+            timeFormat.format(
+                Date()
+            )
 
         handler.postDelayed(
             {
@@ -210,7 +293,9 @@ private val onHomeClick: () -> Unit = {}) : LinearLayout(context) {
 
         return (
             value *
-            resources.displayMetrics.density
+            resources
+                .displayMetrics
+                .density
         ).toInt()
     }
 }

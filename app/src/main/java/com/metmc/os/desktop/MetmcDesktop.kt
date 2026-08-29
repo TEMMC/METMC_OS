@@ -25,7 +25,12 @@ class MetmcDesktop(
     private val taskbar = XfceTaskbar(
         context,
         { showLauncher() },
-        { windows.forEach { it.visibility = View.GONE } }
+        {
+            windows.forEach {
+                it.visibility = View.GONE
+            }
+            taskbar.bringToFront()
+        }
     )
     private val windows = ArrayList<View>()
 
@@ -144,11 +149,17 @@ class MetmcDesktop(
         content: View
     ): View {
 
-        val window = DesktopWindow(
+        lateinit var window: DesktopWindow
+
+        window = DesktopWindow(
             context,
             title,
             content,
-            desktopArea
+            desktopArea,
+            {
+                windows.remove(window)
+                taskbar.removeWindow(window)
+            }
         )
 
         val params = FrameLayout.LayoutParams(
@@ -176,6 +187,8 @@ class MetmcDesktop(
             title,
             window
         )
+
+        taskbar.bringToFront()
 
         return window
     }
