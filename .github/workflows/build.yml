@@ -34,14 +34,11 @@ jobs:
             "ndk;27.0.12077973" \
             "cmake;3.22.1"
 
-      - name: Make Gradle wrapper executable
-        run: chmod +x ./gradlew
-
       - name: Build and capture full log
         shell: bash
         run: |
           set -o pipefail
-          ./gradlew clean assembleDebug \
+          gradle clean assembleDebug \
             --stacktrace \
             --info \
             2>&1 | tee build.log
