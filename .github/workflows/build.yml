@@ -37,3 +37,12 @@ jobs:
         with:
           name: METMC-OS-debug
           path: app/build/outputs/apk/debug/*.apk
+
+
+      - name: Show Kotlin compilation errors
+        if: always()
+        run: |
+          echo "========== KOTLIN / JAVA ERRORS =========="
+          grep -nEi -B8 -A15 '(^e: |error:|unresolved reference|type mismatch|expecting|cannot access|overload resolution|conflicting overloads|Compilation error)' build.log | tail -300 || true
+          echo "========== LAST 300 LINES =========="
+          tail -300 build.log || true
