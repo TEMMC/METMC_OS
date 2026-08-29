@@ -87,7 +87,7 @@ class DesktopAppMenu(
 
             row.addView(
                 icon,
-                LinearLayout.LayoutParams(
+                LinearLayout.ViewGroup.LayoutParams(
                     dp(42),
                     dp(42)
                 )
@@ -106,7 +106,7 @@ class DesktopAppMenu(
 
             row.addView(
                 name,
-                LinearLayout.LayoutParams(
+                LinearLayout.ViewGroup.LayoutParams(
                     0,
                     dp(54),
                     1f
@@ -123,8 +123,8 @@ class DesktopAppMenu(
 
             apps.addView(
                 row,
-                LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
+                LinearLayout.ViewGroup.LayoutParams(
+                    ViewGroup.ViewGroup.LayoutParams.MATCH_PARENT,
                     dp(58)
                 )
             )
@@ -132,16 +132,16 @@ class DesktopAppMenu(
 
         scroll.addView(
             apps,
-            ScrollView.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT
+            ScrollView.ViewGroup.LayoutParams(
+                ViewGroup.ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.ViewGroup.LayoutParams.WRAP_CONTENT
             )
         )
 
         root.addView(
             scroll,
-            LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
+            LinearLayout.ViewGroup.LayoutParams(
+                ViewGroup.ViewGroup.LayoutParams.MATCH_PARENT,
                 0,
                 1f
             )
@@ -229,7 +229,7 @@ class DesktopAppMenu(
 
         button.addView(
             icon,
-            LinearLayout.LayoutParams(
+            LinearLayout.ViewGroup.LayoutParams(
                 dp(48),
                 dp(56)
             )
@@ -249,7 +249,7 @@ class DesktopAppMenu(
 
         button.addView(
             label,
-            LinearLayout.LayoutParams(
+            LinearLayout.ViewGroup.LayoutParams(
                 0,
                 dp(56),
                 1f
@@ -262,8 +262,8 @@ class DesktopAppMenu(
 
         parent.addView(
             button,
-            LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
+            LinearLayout.ViewGroup.LayoutParams(
+                ViewGroup.ViewGroup.LayoutParams.MATCH_PARENT,
                 dp(58)
             )
         )
