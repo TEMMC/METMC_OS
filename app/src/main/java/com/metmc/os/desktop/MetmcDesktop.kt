@@ -302,6 +302,20 @@ class MetmcDesktop(
             )
         )
 
+        android.setOnClickListener {
+            val menu = DesktopAppMenu(context) { title, content ->
+                createWindow(title, content)
+            }
+            menu.showAndroidApps()
+        }
+
+        linux.setOnClickListener {
+            val menu = DesktopAppMenu(context) { title, content ->
+                createWindow(title, content)
+            }
+            menu.showLinuxApps()
+        }
+
         createWindow(
             "Applications",
             box
