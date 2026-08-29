@@ -21,18 +21,18 @@ class MetmcDesktop(
 
     private val activity = context as? Activity
 
-    private val desktopArea = DesktopWorkspace(context)
-    private val taskbar = XfceTaskbar(
+    private val desktopArea: DesktopWorkspace = DesktopWorkspace(context)
+    private val windows: ArrayList<View> = ArrayList()
+
+    private val taskbar: XfceTaskbar = XfceTaskbar(
         context,
         { showLauncher() },
         {
-            windows.forEach {
-                it.visibility = View.GONE
+            windows.forEach { window: View ->
+                window.visibility = View.GONE
             }
-            taskbar.bringToFront()
         }
     )
-    private val windows = ArrayList<View>()
 
     private var wallpaperUri: Uri? = null
 
