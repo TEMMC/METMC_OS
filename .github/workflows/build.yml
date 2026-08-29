@@ -34,34 +34,19 @@ jobs:
             "ndk;27.0.12077973" \
             "cmake;3.22.1"
 
-      - name: Build and capture full log
+      - name: Build
         shell: bash
         run: |
-          set -o pipefail
-          gradle clean assembleDebug \
-            --stacktrace \
-            --info \
-            2>&1 | tee build.log
-
-      - name: Show compiler errors
-        if: always()
-        shell: bash
-        run: |
-          echo "========== ACTUAL COMPILER ERRORS =========="
-          grep -nEi -B5 -A15 \
-            '(^e: |^error: |unresolved reference|type mismatch|expecting|cannot access|overload resolution|conflicting overloads|Compilation error)' \
-            build.log | tail -400 || true
-
+          set +e
+          gradle clean assembleDebug --stacktrace 2>&1 | tee build.log
+          BUILD_STATUS=${PIPESTATUS[0]}
           echo ""
-          echo "========== LAST 200 LINES =========="
-          tail -200 build.log || true
-
-      - name: Upload build log
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: METMC-OS-build-log
-          path: build.log
+          echo "========== FIRST COMPILER ERRORS =========="
+          grep -nEi -B5 -A15 '(^e: file:|^e: |error:|unresolved reference|type mismatch|expecting|cannot access|overload resolution|conflicting overloads)' build.log | head -300 || true
+          echo ""
+          echo "========== LAST 400 BUILD LINES =========="
+          tail -400 build.log || true
+          exit $BUILD_STATUS
 
       - name: Upload APK
         if: success()
