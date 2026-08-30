@@ -40,35 +40,34 @@ class DesktopAppMenu(
 
         val pm = context.packageManager
 
-        val intent = Intent(
-            Intent.ACTION_MAIN,
-            null
-        ).apply {
-            addCategory(Intent.CATEGORY_LAUNCHER)
+        val activities = pm.getInstalledApplications(
+            PackageManager.GET_META_DATA
+        ).sortedBy {
+            pm.getApplicationLabel(it)
+                .toString()
+                .lowercase()
         }
 
-        val activities =
-            pm.queryIntentActivities(
-                intent,
-                PackageManager.MATCH_ALL
-            ).sortedBy {
-                it.loadLabel(pm)
-                    .toString()
-                    .lowercase()
-            }
+        activities.forEach { appInfo ->
 
-        activities.forEach { info ->
-
-            val packageName =
-                info.activityInfo.packageName
+            val packageName = appInfo.packageName
 
             if (packageName == context.packageName) {
                 return@forEach
             }
 
+            val launchIntent =
+                pm.getLaunchIntentForPackage(packageName)
+                    ?: return@forEach
+
             val label =
-                info.loadLabel(pm)
+                pm.getApplicationLabel(appInfo)
                     .toString()
+                    .trim()
+
+            if (label.isEmpty()) {
+                return@forEach
+            }
 
             val row = LinearLayout(context)
             row.orientation = LinearLayout.HORIZONTAL
@@ -82,7 +81,7 @@ class DesktopAppMenu(
 
             val icon = ImageView(context)
             icon.setImageDrawable(
-                info.loadIcon(pm)
+                appInfo.loadIcon(pm)
             )
 
             row.addView(
