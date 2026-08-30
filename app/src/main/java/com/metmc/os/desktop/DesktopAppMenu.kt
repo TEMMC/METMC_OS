@@ -183,18 +183,6 @@ class DesktopAppMenu(
             )
         }
 
-        addLinuxButton(
-            root,
-        ) {
-            context.startActivity(
-                Intent(
-                    context,
-                    com.metmc.os.linux.TerminalActivity::class.java
-                ).addFlags(
-                    Intent.FLAG_ACTIVITY_NEW_TASK
-                )
-            )
-        }
 
         style(root)
 
