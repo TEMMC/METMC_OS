@@ -17,7 +17,6 @@ import android.widget.TextView;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileReader;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 
@@ -32,78 +31,161 @@ public class LinuxTerminalActivity extends Activity {
     private BufferedReader shellOut;
 
     private final String prompt = "root@metmc:~# ";
+    private final String END_MARKER = "__METMC_COMMAND_END__";
 
     private int dp(int value) {
-        return (int) (value * getResources().getDisplayMetrics().density);
+        return (int) (
+                value *
+                getResources().getDisplayMetrics().density
+        );
     }
 
     private TextView terminalText(String text) {
+
         TextView view = new TextView(this);
+
         view.setText(text);
-        view.setTextColor(Color.rgb(220, 220, 220));
+        view.setTextColor(
+                Color.rgb(220, 220, 220)
+        );
+
         view.setTextSize(17);
         view.setTypeface(Typeface.MONOSPACE);
-        view.setPadding(0, 0, 0, 0);
+
+        view.setPadding(
+                0,
+                0,
+                0,
+                0
+        );
+
         return view;
     }
 
     private void scrollToBottom() {
-        scrollView.post(() -> scrollView.fullScroll(View.FOCUS_DOWN));
+
+        if (scrollView == null) {
+            return;
+        }
+
+        scrollView.post(
+                () -> scrollView.fullScroll(
+                        View.FOCUS_DOWN
+                )
+        );
     }
 
     @Override
-    public void onCreate(Bundle savedInstanceState) {
+    public void onCreate(
+            Bundle savedInstanceState
+    ) {
+
         super.onCreate(savedInstanceState);
 
-        LinearLayout root = new LinearLayout(this);
-        root.setOrientation(LinearLayout.VERTICAL);
-        root.setBackgroundColor(Color.rgb(12, 13, 18));
+        LinearLayout root =
+                new LinearLayout(this);
 
-        LinearLayout titleBar = new LinearLayout(this);
-        titleBar.setGravity(Gravity.CENTER_VERTICAL);
-        titleBar.setPadding(dp(18), dp(8), dp(12), dp(8));
-        titleBar.setBackgroundColor(Color.rgb(48, 51, 65));
+        root.setOrientation(
+                LinearLayout.VERTICAL
+        );
 
-        TextView title = terminalText("METMC Linux Terminal");
+        root.setBackgroundColor(
+                Color.rgb(10, 11, 16)
+        );
+
+        LinearLayout titleBar =
+                new LinearLayout(this);
+
+        titleBar.setOrientation(
+                LinearLayout.HORIZONTAL
+        );
+
+        titleBar.setGravity(
+                Gravity.CENTER_VERTICAL
+        );
+
+        titleBar.setPadding(
+                dp(18),
+                dp(8),
+                dp(12),
+                dp(8)
+        );
+
+        titleBar.setBackgroundColor(
+                Color.rgb(48, 51, 65)
+        );
+
+        TextView title =
+                terminalText(
+                        "METMC Linux Terminal"
+                );
+
         title.setTextSize(18);
-        title.setTypeface(Typeface.MONOSPACE, Typeface.BOLD);
+        title.setTypeface(
+                Typeface.MONOSPACE,
+                Typeface.BOLD
+        );
 
         titleBar.addView(
                 title,
                 new LinearLayout.LayoutParams(
                         0,
-                        ViewGroup.LayoutParams.WRAP_CONTENT,
+                        dp(58),
                         1f
                 )
         );
 
-        TextView close = terminalText("×");
-        close.setTextSize(28);
-        close.setGravity(Gravity.CENTER);
-        close.setOnClickListener(v -> finish());
+        TextView close =
+                terminalText("×");
+
+        close.setTextSize(30);
+        close.setGravity(
+                Gravity.CENTER
+        );
+
+        close.setOnClickListener(
+                v -> finish()
+        );
 
         titleBar.addView(
                 close,
-                new LinearLayout.LayoutParams(dp(64), dp(52))
+                new LinearLayout.LayoutParams(
+                        dp(70),
+                        dp(58)
+                )
         );
 
         root.addView(
                 titleBar,
                 new LinearLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT,
-                        ViewGroup.LayoutParams.WRAP_CONTENT
+                        dp(58)
                 )
         );
 
-        scrollView = new ScrollView(this);
+        scrollView =
+                new ScrollView(this);
+
         scrollView.setFillViewport(true);
 
-        HorizontalScrollView horizontal = new HorizontalScrollView(this);
+        HorizontalScrollView horizontal =
+                new HorizontalScrollView(this);
+
         horizontal.setFillViewport(true);
 
-        terminalContent = new LinearLayout(this);
-        terminalContent.setOrientation(LinearLayout.VERTICAL);
-        terminalContent.setPadding(dp(18), dp(8), dp(18), dp(18));
+        terminalContent =
+                new LinearLayout(this);
+
+        terminalContent.setOrientation(
+                LinearLayout.VERTICAL
+        );
+
+        terminalContent.setPadding(
+                dp(18),
+                dp(14),
+                dp(18),
+                dp(18)
+        );
 
         horizontal.addView(
                 terminalContent,
@@ -117,7 +199,7 @@ public class LinuxTerminalActivity extends Activity {
                 horizontal,
                 new ScrollView.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT,
-                        ViewGroup.LayoutParams.WRAP_CONTENT
+                        ViewGroup.LayoutParams.MATCH_PARENT
                 )
         );
 
@@ -136,34 +218,91 @@ public class LinuxTerminalActivity extends Activity {
     }
 
     private void addPromptLine() {
-        LinearLayout line = new LinearLayout(this);
-        line.setOrientation(LinearLayout.HORIZONTAL);
-        line.setGravity(Gravity.CENTER_VERTICAL);
 
-        TextView promptView = terminalText(prompt);
-        promptView.setTextColor(Color.rgb(130, 190, 145));
+        LinearLayout line =
+                new LinearLayout(this);
 
-        commandInput = new EditText(this);
-        commandInput.setTextColor(Color.rgb(225, 225, 225));
+        line.setOrientation(
+                LinearLayout.HORIZONTAL
+        );
+
+        line.setGravity(
+                Gravity.CENTER_VERTICAL
+        );
+
+        TextView promptView =
+                terminalText(prompt);
+
+        promptView.setTextColor(
+                Color.rgb(
+                        130,
+                        190,
+                        145
+                )
+        );
+
+        commandInput =
+                new EditText(this);
+
+        commandInput.setTextColor(
+                Color.rgb(
+                        235,
+                        235,
+                        235
+                )
+        );
+
         commandInput.setTextSize(17);
-        commandInput.setTypeface(Typeface.MONOSPACE);
+
+        commandInput.setTypeface(
+                Typeface.MONOSPACE
+        );
+
         commandInput.setSingleLine(true);
-        commandInput.setBackgroundColor(Color.TRANSPARENT);
-        commandInput.setPadding(0, 0, 0, 0);
 
-        commandInput.setOnEditorActionListener((v, actionId, event) -> {
-            submitCommand();
-            return true;
-        });
+        commandInput.setBackgroundColor(
+                Color.TRANSPARENT
+        );
 
-        commandInput.setOnKeyListener((v, keyCode, event) -> {
-            if (keyCode == KeyEvent.KEYCODE_ENTER &&
-                    event.getAction() == KeyEvent.ACTION_DOWN) {
-                submitCommand();
-                return true;
-            }
-            return false;
-        });
+        commandInput.setPadding(
+                0,
+                0,
+                0,
+                0
+        );
+
+        commandInput.setHint("");
+        commandInput.setHintTextColor(
+                Color.TRANSPARENT
+        );
+
+        commandInput.setOnEditorActionListener(
+                (v, actionId, event) -> {
+
+                    submitCommand();
+
+                    return true;
+                }
+        );
+
+        commandInput.setOnKeyListener(
+                (v, keyCode, event) -> {
+
+                    if (
+                            keyCode ==
+                                    KeyEvent.KEYCODE_ENTER &&
+                            event.getAction() ==
+                                    KeyEvent.ACTION_DOWN
+                    ) {
+
+                        submitCommand();
+
+                        return true;
+                    }
+
+                    return false;
+                }
+        );
 
         line.addView(
                 promptView,
@@ -191,117 +330,243 @@ public class LinuxTerminalActivity extends Activity {
         );
 
         commandInput.requestFocus();
+
         scrollToBottom();
     }
 
     private void submitCommand() {
-        if (commandInput == null) return;
 
-        String command = commandInput.getText().toString();
+        if (
+                commandInput == null ||
+                !commandInput.isEnabled()
+        ) {
+            return;
+        }
 
-        if (command.trim().isEmpty()) {
+        String command =
+                commandInput
+                        .getText()
+                        .toString()
+                        .trim();
+
+        if (command.isEmpty()) {
             return;
         }
 
         commandInput.setEnabled(false);
 
-        new Thread(() -> {
-            try {
-                if (shellIn != null) {
-                    shellIn.write(command);
-                    shellIn.newLine();
-                    shellIn.flush();
+        new Thread(
+                () -> {
 
-                    shellIn.write("printf '\\n__METMC_COMMAND_END__\\n'");
-                    shellIn.newLine();
-                    shellIn.flush();
+                    try {
+
+                        if (shellIn == null) {
+                            return;
+                        }
+
+                        shellIn.write(
+                                command
+                        );
+
+                        shellIn.newLine();
+
+                        shellIn.write(
+                                "printf '\\n" +
+                                END_MARKER +
+                                "\\n'"
+                        );
+
+                        shellIn.newLine();
+
+                        shellIn.flush();
+
+                    } catch (Exception e) {
+
+                        printOutput(
+                                "\nError: " +
+                                e.getMessage() +
+                                "\n"
+                        );
+
+                        runOnUiThread(
+                                this::addPromptLine
+                        );
+                    }
+
                 }
-            } catch (Exception e) {
-                printOutput("\nError: " + e.getMessage() + "\n");
-                runOnUiThread(this::addPromptLine);
-            }
-        }).start();
+        ).start();
     }
 
     private void startShell() {
-        new Thread(() -> {
-            try {
-                String rootfs = "/data/local/linux/rootfs";
 
-                ProcessBuilder builder;
+        new Thread(
+                () -> {
 
-                if (new File(rootfs).exists()) {
-                    builder = new ProcessBuilder(
-                            "su",
-                            "-c",
-                            "chroot " + rootfs +
-                            " /bin/bash --noprofile --norc"
-                    );
-                } else {
-                    builder = new ProcessBuilder(
-                            "su",
-                            "-c",
-                            "/system/bin/sh"
-                    );
-                }
+                    try {
 
-                builder.redirectErrorStream(true);
+                        String rootfs =
+                                "/data/local/linux/rootfs";
 
-                shell = builder.start();
+                        ProcessBuilder builder;
 
-                shellIn = new BufferedWriter(
-                        new OutputStreamWriter(shell.getOutputStream())
-                );
+                        if (
+                                new File(rootfs).isDirectory()
+                        ) {
 
-                shellOut = new BufferedReader(
-                        new InputStreamReader(shell.getInputStream())
-                );
+                            String command =
+                                    "export HOME=/root; " +
+                                    "export USER=root; " +
+                                    "export TERM=xterm-256color; " +
+                                    "export PATH=/usr/local/sbin:" +
+                                    "/usr/local/bin:" +
+                                    "/usr/sbin:" +
+                                    "/usr/bin:" +
+                                    "/sbin:" +
+                                    "/bin; " +
+                                    "exec chroot " +
+                                    rootfs +
+                                    " /bin/bash --noprofile --norc";
 
-                runOnUiThread(() -> {
-                    printOutput("METMC Linux Terminal\n\n");
-                    addPromptLine();
-                });
+                            builder =
+                                    new ProcessBuilder(
+                                            "/debug_ramdisk/su",
+                                            "-c",
+                                            command
+                                    );
 
-                String line;
+                        } else {
 
-                while ((line = shellOut.readLine()) != null) {
+                            builder =
+                                    new ProcessBuilder(
+                                            "/debug_ramdisk/su",
+                                            "-c",
+                                            "exec /system/bin/sh"
+                                    );
+                        }
 
-                    if (line.equals("__METMC_COMMAND_END__")) {
-                        runOnUiThread(this::addPromptLine);
-                    } else {
-                        printOutput(line + "\n");
+                        builder.redirectErrorStream(
+                                true
+                        );
+
+                        shell =
+                                builder.start();
+
+                        shellIn =
+                                new BufferedWriter(
+                                        new OutputStreamWriter(
+                                                shell.getOutputStream()
+                                        )
+                                );
+
+                        shellOut =
+                                new BufferedReader(
+                                        new InputStreamReader(
+                                                shell.getInputStream()
+                                        )
+                                );
+
+                        runOnUiThread(
+                                () -> {
+
+                                    printOutput(
+                                            "METMC Linux Terminal\n\n"
+                                    );
+
+                                    addPromptLine();
+                                }
+                        );
+
+                        String line;
+
+                        while (
+                                (
+                                        line =
+                                                shellOut.readLine()
+                                ) != null
+                        ) {
+
+                            if (
+                                    line.equals(
+                                            END_MARKER
+                                    )
+                            ) {
+
+                                runOnUiThread(
+                                        this::addPromptLine
+                                );
+
+                            } else {
+
+                                printOutput(
+                                        line + "\n"
+                                );
+                            }
+                        }
+
+                    } catch (Exception e) {
+
+                        printOutput(
+                                "\nTerminal failed to start:\n" +
+                                e.getMessage() +
+                                "\n"
+                        );
                     }
                 }
-
-            } catch (Exception e) {
-                printOutput("\nTerminal failed to start:\n" +
-                        e.getMessage() + "\n");
-            }
-        }).start();
+        ).start();
     }
 
-    private void printOutput(String text) {
-        runOnUiThread(() -> {
-            terminalContent.addView(terminalText(text));
-            scrollToBottom();
-        });
+    private void printOutput(
+            String text
+    ) {
+
+        runOnUiThread(
+                () -> {
+
+                    if (
+                            terminalContent == null
+                    ) {
+                        return;
+                    }
+
+                    terminalContent.addView(
+                            terminalText(text)
+                    );
+
+                    scrollToBottom();
+                }
+        );
     }
 
     @Override
     protected void onDestroy() {
+
         super.onDestroy();
 
         try {
-            if (shellIn != null) shellIn.close();
+
+            if (
+                    shellIn != null
+            ) {
+                shellIn.close();
+            }
+
         } catch (Exception ignored) {
         }
 
         try {
-            if (shellOut != null) shellOut.close();
+
+            if (
+                    shellOut != null
+            ) {
+                shellOut.close();
+            }
+
         } catch (Exception ignored) {
         }
 
-        if (shell != null) {
+        if (
+                shell != null
+        ) {
             shell.destroy();
         }
     }

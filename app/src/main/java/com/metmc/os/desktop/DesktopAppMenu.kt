@@ -21,8 +21,6 @@ class DesktopAppMenu(
 
     fun showAndroidApps() {
 
-        val activity = context as? Activity ?: return
-
         val root = LinearLayout(context)
         root.orientation = LinearLayout.VERTICAL
         root.setPadding(dp(10), dp(10), dp(10), dp(10))
@@ -45,12 +43,13 @@ class DesktopAppMenu(
         val intent = Intent(Intent.ACTION_MAIN)
         intent.addCategory(Intent.CATEGORY_LAUNCHER)
 
-        val activities = pm.queryIntentActivities(
-            intent,
-            PackageManager.MATCH_ALL
-        ).sortedBy {
-            it.loadLabel(pm).toString().lowercase()
-        }
+        val activities =
+            pm.queryIntentActivities(
+                intent,
+                PackageManager.MATCH_ALL
+            ).sortedBy {
+                it.loadLabel(pm).toString().lowercase()
+            }
 
         val added = HashSet<String>()
 
@@ -76,10 +75,11 @@ class DesktopAppMenu(
                 return@forEach
             }
 
-            val row = createAppRow(
-                resolveInfo.loadIcon(pm),
-                label
-            )
+            val row =
+                createAppRow(
+                    resolveInfo.loadIcon(pm),
+                    label
+                )
 
             row.setOnClickListener {
 
@@ -177,112 +177,105 @@ class DesktopAppMenu(
             )
         }
 
+        val status = TextView(context)
+
+        status.text =
+            "Scanning Linux applications..."
+
+        status.textSize = 16f
+        status.setTextColor(Color.LTGRAY)
+
+        status.setPadding(
+            dp(14),
+            dp(20),
+            dp(14),
+            dp(20)
+        )
+
+        apps.addView(status)
+
         Thread {
 
             try {
+
+                val scanCommand =
+                    "export HOME=/root; " +
+                    "export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin; " +
+                    "chroot /data/local/linux/rootfs /bin/bash -c " +
+                    "\"find /usr/share/applications /usr/local/share/applications " +
+                    "-type f -name '*.desktop' 2>/dev/null | while read f; do " +
+                    "name=\\$(grep -m1 '^Name=' \\\"\\$f\\\" | cut -d= -f2-); " +
+                    "exec=\\$(grep -m1 '^Exec=' \\\"\\$f\\\" | cut -d= -f2-); " +
+                    "if [ -n \\\"\\$name\\\" ] && [ -n \\\"\\$exec\\\" ]; then " +
+                    "printf '%s|%s\\\\n' \\\"\\$name\\\" \\\"\\$exec\\\"; " +
+                    "fi; " +
+                    "done\""
 
                 val process =
                     Runtime.getRuntime().exec(
                         arrayOf(
                             "/debug_ramdisk/su",
                             "-c",
-                            "chroot /data/local/linux/rootfs /bin/bash -c " +
-                            "'find /usr/share/applications /usr/local/share/applications " +
-                            "-type f -name \"*.desktop\" 2>/dev/null'"
+                            scanCommand
                         )
                     )
 
-                val reader =
-                    process.inputStream.bufferedReader()
+                val result =
+                    process.inputStream
+                        .bufferedReader()
+                        .readLines()
 
-                val desktopFiles =
-                    reader.readLines()
-                        .filter {
-                            it.isNotBlank()
-                        }
-                        .sorted()
+                process.waitFor()
 
                 val linuxApps =
-                    ArrayList<Pair<String, String>>()
+                    result.mapNotNull { line ->
 
-                desktopFiles.forEach { path ->
+                        val index =
+                            line.indexOf("|")
 
-                    try {
+                        if (index <= 0) {
+                            null
+                        } else {
 
-                        val infoProcess =
-                            Runtime.getRuntime().exec(
-                                arrayOf(
-                                    "/debug_ramdisk/su",
-                                    "-c",
-                                    "chroot /data/local/linux/rootfs /bin/bash -c " +
-                                    "'grep -E \"^(Name|Exec)=\" " +
-                                    "\"$path\" 2>/dev/null'"
+                            val name =
+                                line.substring(
+                                    0,
+                                    index
+                                ).trim()
+
+                            val exec =
+                                line.substring(
+                                    index + 1
                                 )
-                            )
+                                .replace(
+                                    Regex("\\s+%[a-zA-Z]"),
+                                    ""
+                                )
+                                .trim()
 
-                        val lines =
-                            infoProcess.inputStream
-                                .bufferedReader()
-                                .readLines()
-
-                        var name: String? = null
-                        var exec: String? = null
-
-                        lines.forEach { line ->
-
-                            when {
-
-                                line.startsWith("Name=") &&
-                                name == null -> {
-
-                                    name =
-                                        line.removePrefix("Name=")
-                                }
-
-                                line.startsWith("Exec=") &&
-                                exec == null -> {
-
-                                    exec =
-                                        line.removePrefix("Exec=")
-                                            .replace(
-                                                Regex("\\s+%[a-zA-Z]"),
-                                                ""
-                                            )
-                                            .trim()
-                                }
+                            if (
+                                name.isBlank() ||
+                                exec.isBlank()
+                            ) {
+                                null
+                            } else {
+                                Pair(name, exec)
                             }
                         }
-
-                        if (
-                            !name.isNullOrBlank() &&
-                            !exec.isNullOrBlank()
-                        ) {
-
-                            linuxApps.add(
-                                Pair(
-                                    name!!,
-                                    exec!!
-                                )
-                            )
-                        }
-
-                    } catch (_: Exception) {
                     }
-                }
-
-                val unique =
-                    linuxApps
-                        .distinctBy {
-                            it.first.lowercase()
-                        }
-                        .sortedBy {
-                            it.first.lowercase()
-                        }
+                    .distinctBy {
+                        it.first.lowercase()
+                    }
+                    .sortedBy {
+                        it.first.lowercase()
+                    }
 
                 (context as? Activity)
                     ?.runOnUiThread {
 
-                        unique.forEach { app ->
+                        apps.removeView(status)
+
+                        linuxApps.forEach { app ->
 
                             addLinuxButton(
                                 apps,
@@ -291,13 +284,12 @@ class DesktopAppMenu(
 
                                 try {
 
-                                    val command =
-                                        "chroot /data/local/linux/rootfs " +
-                                        "/bin/bash -c " +
+                                    val launchCommand =
+                                        "export HOME=/root; " +
+                                        "export USER=root; " +
+                                        "export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin; " +
+                                        "chroot /data/local/linux/rootfs /bin/bash -c " +
                                         shellQuote(
-                                            "export HOME=/root; " +
-                                            "export DISPLAY=:0; " +
-                                            "export XDG_RUNTIME_DIR=/tmp; " +
                                             app.second
                                         )
 
@@ -305,7 +297,7 @@ class DesktopAppMenu(
                                         arrayOf(
                                             "/debug_ramdisk/su",
                                             "-c",
-                                            command
+                                            launchCommand
                                         )
                                     )
 
@@ -314,17 +306,21 @@ class DesktopAppMenu(
                             }
                         }
 
-                        if (unique.isEmpty()) {
+                        if (
+                            linuxApps.isEmpty()
+                        ) {
 
                             val empty =
                                 TextView(context)
 
                             empty.text =
-                                "No Linux desktop applications installed.\n\n" +
-                                "Install a Linux application from Terminal. " +
-                                "Applications with .desktop launchers will appear here."
+                                "No Linux desktop applications found.\n\n" +
+                                "The Terminal is working independently. " +
+                                "Install a Linux desktop application that provides a .desktop launcher, " +
+                                "then reopen this window."
 
                             empty.textSize = 16f
+
                             empty.setTextColor(
                                 Color.LTGRAY
                             )
@@ -345,6 +341,8 @@ class DesktopAppMenu(
                 (context as? Activity)
                     ?.runOnUiThread {
 
+                        apps.removeView(status)
+
                         val error =
                             TextView(context)
 
@@ -352,6 +350,7 @@ class DesktopAppMenu(
                             "Unable to scan the METMC Linux environment."
 
                         error.textSize = 16f
+
                         error.setTextColor(
                             Color.LTGRAY
                         )
@@ -552,7 +551,11 @@ class DesktopAppMenu(
             GradientDrawable().apply {
 
                 setColor(
-                    Color.rgb(25, 27, 34)
+                    Color.rgb(
+                        25,
+                        27,
+                        34
+                    )
                 )
 
                 cornerRadius =
