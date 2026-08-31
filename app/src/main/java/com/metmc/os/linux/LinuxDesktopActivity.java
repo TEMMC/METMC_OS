@@ -222,28 +222,86 @@ public class LinuxDesktopActivity extends Activity {
     }
 
     private void launchDesktopFile(String file,String name){
-        ensureOpenbox();
-        new Thread(()->{
-            try{
-                String id=new File(file).getName().replace(".desktop","");
-                String cmd="export HOME=/root; export USER=root; export DISPLAY=:100; "+
-                        "export XDG_RUNTIME_DIR=/tmp/metmc-runtime; "+
-                        "exec sh -c "+quote("grep -m1 '^Exec=' "+quote(file)+" | sed 's/^Exec=//; s/ %F//; s/ %U//; s/ %f//; s/ %u//' | sh");
-                new ProcessBuilder("su","-c",
-                        "chroot /data/local/linux/rootfs /bin/bash -lc "+quote(cmd))
-                        .redirectErrorStream(true).start();
 
-                runOnUiThread(()->{
-                    LinuxDisplayView display=new LinuxDisplayView(this);
-                    DesktopWindow w=new DesktopWindow(this,desktop,name,display);
-                    windows.add(w);
-                    desktop.addView(w);
-                    addWindowTask(w);
-                    w.bringToFront();
-                    display.start();
-                });
-            }catch(Exception e){showError(e.toString());}
-        }).start();
+        LinuxDisplayView display=new LinuxDisplayView(this);
+
+        DesktopWindow w=new DesktopWindow(
+                this,
+                desktop,
+                name,
+                display
+        );
+
+        windows.add(w);
+        desktop.addView(w);
+        addWindowTask(w);
+        w.bringToFront();
+
+        display.start();
+
+        new Thread(() -> {
+            try {
+
+                Thread.sleep(1000);
+
+                String execCommand =
+                        "grep -m1 '^Exec=' " +
+                        quote(file) +
+                        " | sed 's/^Exec=//; " +
+                        "s/ %F//g; " +
+                        "s/ %U//g; " +
+                        "s/ %f//g; " +
+                        "s/ %u//g; " +
+                        "s/ %i//g; " +
+                        "s/ %c//g'";
+
+                String command =
+                        "export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin; " +
+                        "export HOME=/root; " +
+                        "export USER=root; " +
+                        "export DISPLAY=:100; " +
+                        "export XDG_RUNTIME_DIR=/tmp/metmc-runtime; " +
+                        "mkdir -p /tmp/metmc-runtime; " +
+                        "chmod 700 /tmp/metmc-runtime; " +
+
+                        "if ! pgrep -x Xvfb >/dev/null 2>&1; then " +
+                        "Xvfb :100 -screen 0 1280x720x24 -ac +extension GLX +extension RANDR " +
+                        ">/tmp/metmc-xvfb.log 2>&1 & " +
+                        "sleep 2; " +
+                        "fi; " +
+
+                        "if ! pgrep -x openbox >/dev/null 2>&1; then " +
+                        "DISPLAY=:100 openbox " +
+                        ">/tmp/metmc-openbox.log 2>&1 & " +
+                        "sleep 2; " +
+                        "fi; " +
+
+                        "exec sh -c " +
+                        quote(execCommand + " | sh");
+
+                new ProcessBuilder(
+                        "su",
+                        "-c",
+                        "chroot /data/local/linux/rootfs " +
+                        "/bin/bash -lc " +
+                        quote(command)
+                )
+                .redirectErrorStream(true)
+                .start();
+
+            } catch(Exception e) {
+
+                runOnUiThread(() ->
+                        showError(
+                                "Failed to launch " +
+                                name +
+                                "\n\n" +
+                                e
+                        )
+                );
+            }
+
+        }, "METMC-Linux-App").start();
     }
 
     private void openTerminal(){
