@@ -39,40 +39,45 @@ jobs:
             "ndk;27.0.12077973" \
             "cmake;3.22.1"
 
-        - name: Build and show actual errors
-          shell: bash
-          run: |
-            set +e
-            chmod +x gradlew
-            ./gradlew clean assembleDebug --stacktrace > build.log 2>&1
-            BUILD_STATUS=$?
+      - name: Build and show actual errors
+        shell: bash
+        run: |
+          set +e
 
-            echo "========== BUILD ERROR LOCATIONS =========="
-            grep -nEi 'error:|\.java:[0-9]+:|\.kt:[0-9]+:|Execution failed for task|FAILURE: Build failed|BUILD FAILED' build.log | head -100 || true
+          chmod +x gradlew
+          ./gradlew clean assembleDebug --stacktrace > build.log 2>&1
+          BUILD_STATUS=$?
 
-            echo ""
-            echo "========== FIRST ERROR CONTEXT =========="
-            ERROR_LINE=$(grep -nEi 'error:|\.java:[0-9]+:|\.kt:[0-9]+:' build.log | head -1 | cut -d: -f1)
+          echo "========== BUILD ERROR LOCATIONS =========="
 
-            if [ -n "$ERROR_LINE" ]; then
-              START=$((ERROR_LINE - 15))
-              [ "$START" -lt 1 ] && START=1
-              END=$((ERROR_LINE + 60))
-              sed -n "${START},${END}p" build.log
-            else
-              echo "No direct compiler error found."
-              grep -nEi -B10 -A30 'Execution failed for task|What went wrong|Caused by:' build.log | head -200 || true
-            fi
+          grep -nEi 'error:|\.java:[0-9]+:|\.kt:[0-9]+:|Execution failed for task|FAILURE: Build failed|BUILD FAILED' build.log | head -100 || true
 
-            echo ""
-            echo "========== FAILED TASK =========="
-            grep -nE '> Task .* FAILED|Execution failed for task' build.log | head -30 || true
+          echo ""
+          echo "========== FIRST ERROR CONTEXT =========="
 
-            echo ""
-            echo "========== LAST 120 LINES =========="
-            tail -120 build.log || true
+          ERROR_LINE=$(grep -nEi 'error:|\.java:[0-9]+:|\.kt:[0-9]+:' build.log | head -1 | cut -d: -f1)
 
-            exit $BUILD_STATUS
+          if [ -n "$ERROR_LINE" ]; then
+            START=$((ERROR_LINE - 15))
+            [ "$START" -lt 1 ] && START=1
+            END=$((ERROR_LINE + 60))
+            sed -n "${START},${END}p" build.log
+          else
+            echo "No direct compiler error found."
+            grep -nEi -B10 -A30 'Execution failed for task|What went wrong|Caused by:' build.log | head -200 || true
+          fi
+
+          echo ""
+          echo "========== FAILED TASK =========="
+
+          grep -nE '> Task .* FAILED|Execution failed for task' build.log | head -30 || true
+
+          echo ""
+          echo "========== LAST 120 LINES =========="
+
+          tail -120 build.log || true
+
+          exit $BUILD_STATUS
 
       - name: Upload build log
         if: always()
