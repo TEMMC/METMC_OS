@@ -33,6 +33,31 @@ class DesktopAppMenu(
 
         root.addView(title)
 
+        val settingsRow = createAppRow(
+            context.getDrawable(android.R.drawable.ic_menu_preferences),
+            "Settings"
+        )
+
+        settingsRow.setOnClickListener {
+            try {
+                context.startActivity(
+                    Intent(
+                        context,
+                        com.metmc.os.settings.SettingsActivity::class.java
+                    ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                )
+            } catch (_: Exception) {
+            }
+        }
+
+        root.addView(
+            settingsRow,
+            LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                dp(58)
+            )
+        )
+
         val scroll = ScrollView(context)
 
         val apps = LinearLayout(context)
