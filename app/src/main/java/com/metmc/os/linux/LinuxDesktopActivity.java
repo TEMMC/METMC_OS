@@ -223,26 +223,8 @@ public class LinuxDesktopActivity extends Activity {
 
     private void launchDesktopFile(String file,String name){
 
-        LinuxDisplayView display=new LinuxDisplayView(this);
-
-        DesktopWindow w=new DesktopWindow(
-                this,
-                desktop,
-                name,
-                display
-        );
-
-        windows.add(w);
-        desktop.addView(w);
-        addWindowTask(w);
-        w.bringToFront();
-
-        display.start();
-
         new Thread(() -> {
             try {
-
-                Thread.sleep(1000);
 
                 String execCommand =
                         "grep -m1 '^Exec=' " +
@@ -261,14 +243,19 @@ public class LinuxDesktopActivity extends Activity {
                         "export USER=root; " +
                         "export DISPLAY=:100; " +
                         "export XDG_RUNTIME_DIR=/tmp/metmc-runtime; " +
-                        "mkdir -p /tmp/metmc-runtime; " +
+
+                        "mkdir -p /tmp/.X11-unix /tmp/metmc-runtime; " +
+                        "chmod 1777 /tmp/.X11-unix; " +
                         "chmod 700 /tmp/metmc-runtime; " +
 
                         "if ! pgrep -x Xvfb >/dev/null 2>&1; then " +
+                        "rm -f /tmp/.X100-lock /tmp/.X11-unix/X100; " +
                         "Xvfb :100 -screen 0 1280x720x24 -ac +extension GLX +extension RANDR " +
                         ">/tmp/metmc-xvfb.log 2>&1 & " +
                         "sleep 2; " +
                         "fi; " +
+
+                        "DISPLAY=:100 xdpyinfo >/dev/null 2>&1 || exit 20; " +
 
                         "if ! pgrep -x openbox >/dev/null 2>&1; then " +
                         "DISPLAY=:100 openbox " +
@@ -276,18 +263,41 @@ public class LinuxDesktopActivity extends Activity {
                         "sleep 2; " +
                         "fi; " +
 
-                        "exec sh -c " +
-                        quote(execCommand + " | sh");
+                        "APP=$(" + execCommand + "); " +
+                        "[ -n \"$APP\" ] || exit 21; " +
+                        "DISPLAY=:100 sh -c \"$APP\" " +
+                        ">/tmp/metmc-app.log 2>&1 &";
 
                 new ProcessBuilder(
                         "su",
                         "-c",
                         "chroot /data/local/linux/rootfs " +
-                        "/bin/bash -lc " +
+                        "/bin/bash -c " +
                         quote(command)
                 )
                 .redirectErrorStream(true)
                 .start();
+
+                runOnUiThread(() -> {
+
+                    LinuxDisplayView display =
+                            new LinuxDisplayView(this);
+
+                    DesktopWindow w =
+                            new DesktopWindow(
+                                    this,
+                                    desktop,
+                                    name,
+                                    display
+                            );
+
+                    windows.add(w);
+                    desktop.addView(w);
+                    addWindowTask(w);
+
+                    w.bringToFront();
+                    display.start();
+                });
 
             } catch(Exception e) {
 
