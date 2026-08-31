@@ -338,66 +338,111 @@ public class LinuxDisplayView extends SurfaceView
     @Override
     public boolean onTouchEvent(MotionEvent event) {
 
-        float x =
-                event.getX() /
-                        Math.max(1, getWidth()) *
-                        WIDTH;
+        requestFocus();
 
-        float y =
-                event.getY() /
-                        Math.max(1, getHeight()) *
-                        HEIGHT;
+        float scaleX = WIDTH / (float) Math.max(1, getWidth());
+        float scaleY = HEIGHT / (float) Math.max(1, getHeight());
 
-        int action = event.getActionMasked();
+        int x = Math.max(
+                0,
+                Math.min(
+                        WIDTH - 1,
+                        (int) (event.getX() * scaleX)
+                )
+        );
 
-        if (action == MotionEvent.ACTION_DOWN) {
+        int y = Math.max(
+                0,
+                Math.min(
+                        HEIGHT - 1,
+                        (int) (event.getY() * scaleY)
+                )
+        );
 
-            requestFocus();
+        switch (event.getActionMasked()) {
 
-            sendMouse(
-                    "mousemove " +
-                            (int) x +
-                            " " +
-                            (int) y +
-                            " mousedown 1"
-            );
+            case MotionEvent.ACTION_DOWN:
 
-            return true;
-        }
-
-        if (action == MotionEvent.ACTION_MOVE) {
-
-            long now = System.currentTimeMillis();
-
-            if (now - lastMove > 16) {
-
-                lastMove = now;
-
-                sendMouse(
-                        "mousemove " +
-                                (int) x +
-                                " " +
-                                (int) y
+                sendX11(
+                        "mousemove --sync " +
+                        x + " " + y +
+                        " && xdotool mousedown 1"
                 );
-            }
 
-            return true;
-        }
+                return true;
 
-        if (action == MotionEvent.ACTION_UP) {
+            case MotionEvent.ACTION_MOVE:
 
-            sendMouse(
-                    "mousemove " +
-                            (int) x +
-                            " " +
-                            (int) y +
-                            " mouseup 1"
-            );
+                long now = System.currentTimeMillis();
 
-            return true;
+                if (now - lastMove >= 16) {
+
+                    lastMove = now;
+
+                    sendX11(
+                            "mousemove " +
+                            x + " " + y
+                    );
+                }
+
+                return true;
+
+            case MotionEvent.ACTION_UP:
+
+                sendX11(
+                        "mousemove --sync " +
+                        x + " " + y +
+                        " && xdotool mouseup 1"
+                );
+
+                performClick();
+
+                return true;
+
+            case MotionEvent.ACTION_CANCEL:
+
+                sendX11("mouseup 1");
+
+                return true;
         }
 
         return true;
+    }
+
+    @Override
+    public boolean performClick() {
+        super.performClick();
+        return true;
+    }
+
+    private void sendX11(String action) {
+
+        new Thread(() -> {
+
+            try {
+
+                String command =
+                        "export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin; " +
+                        "export DISPLAY=:100; " +
+                        "export HOME=/root; " +
+                        "export XDG_RUNTIME_DIR=/tmp/metmc-runtime; " +
+                        "xdotool " + action;
+
+                new ProcessBuilder(
+                        "su",
+                        "-c",
+                        "chroot /data/local/linux/rootfs " +
+                        "/bin/bash -c " +
+                        quote(command)
+                )
+                .redirectErrorStream(true)
+                .start()
+                .waitFor();
+
+            } catch (Exception ignored) {
+            }
+
+        }, "METMC-X11-Input").start();
     }
 
     @Override
@@ -424,29 +469,6 @@ public class LinuxDisplayView extends SurfaceView
         return super.onGenericMotionEvent(event);
     }
 
-    private void sendMouse(String action) {
-
-        new Thread(() -> {
-
-            try {
-
-                String command =
-                        "export DISPLAY=:100; " +
-                        "xdotool " + action;
-
-                new ProcessBuilder(
-                        "su",
-                        "-c",
-                        "chroot /data/local/linux/rootfs " +
-                                "/bin/bash -lc " +
-                                quote(command)
-                ).start();
-
-            } catch (Exception ignored) {
-            }
-
-        }, "METMC-X11-Mouse").start();
-    }
 
     private synchronized void stopFFmpeg() {
 
