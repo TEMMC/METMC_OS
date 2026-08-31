@@ -457,7 +457,7 @@ public class LinuxDisplayView extends SurfaceView
                             MotionEvent.AXIS_VSCROLL
                     );
 
-            sendMouse(
+            sendX11(
                     scroll > 0
                             ? "click 4"
                             : "click 5"
