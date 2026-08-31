@@ -204,10 +204,10 @@ class DesktopAppMenu(
                     "chroot /data/local/linux/rootfs /bin/bash -c " +
                     "\"find /usr/share/applications /usr/local/share/applications " +
                     "-type f -name '*.desktop' 2>/dev/null | while read f; do " +
-                    "name=\\$(grep -m1 '^Name=' \\\"\\$f\\\" | cut -d= -f2-); " +
-                    "exec=\\$(grep -m1 '^Exec=' \\\"\\$f\\\" | cut -d= -f2-); " +
-                    "if [ -n \\\"\\$name\\\" ] && [ -n \\\"\\$exec\\\" ]; then " +
-                    "printf '%s|%s\\\\n' \\\"\\$name\\\" \\\"\\$exec\\\"; " +
+                    "name=\\$(grep -m1 '^Name=' \\\"\\${'$'}f\\\" | cut -d= -f2-); " +
+                    "exec=\\$(grep -m1 '^Exec=' \\\"\\${'$'}f\\\" | cut -d= -f2-); " +
+                    "if [ -n \\\"\\${'$'}name\\\" ] && [ -n \\\"\\${'$'}exec\\\" ]; then " +
+                    "printf '%s|%s\\\\n' \\\"\\${'$'}name\\\" \\\"\\${'$'}exec\\\"; " +
                     "fi; " +
                     "done\""
 
