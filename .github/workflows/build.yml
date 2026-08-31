@@ -44,8 +44,7 @@ jobs:
         run: |
           set +e
 
-          chmod +x gradlew
-          ./gradlew clean assembleDebug --stacktrace > build.log 2>&1
+          gradle clean assembleDebug --stacktrace > build.log 2>&1
           BUILD_STATUS=$?
 
           echo "========== BUILD ERROR LOCATIONS =========="
