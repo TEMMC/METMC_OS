@@ -34,7 +34,7 @@ class DesktopAppMenu(
         root.addView(title)
 
         val settingsRow = createAppRow(
-            context.getDrawable(android.R.drawable.ic_menu_preferences),
+            context.resources.getDrawable(android.R.drawable.ic_menu_preferences, context.theme),
             "Settings"
         )
 
