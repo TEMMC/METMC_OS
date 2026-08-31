@@ -1,5 +1,4 @@
 package com.metmc.os.desktop
-import android.widget.LinearLayout
 
 import android.app.Activity
 import android.content.Context
@@ -10,7 +9,10 @@ import android.graphics.drawable.GradientDrawable
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
-import android.widget.*
+import android.widget.ImageView
+import android.widget.LinearLayout
+import android.widget.ScrollView
+import android.widget.TextView
 
 class DesktopAppMenu(
     private val context: Context,
@@ -109,7 +111,7 @@ class DesktopAppMenu(
 
             apps.addView(
                 row,
-                LinearLayout.LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,
                     dp(58)
                 )
@@ -118,7 +120,7 @@ class DesktopAppMenu(
 
         scroll.addView(
             apps,
-            ScrollView.LinearLayout.LayoutParams(
+            ScrollView.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT
             )
@@ -126,7 +128,7 @@ class DesktopAppMenu(
 
         root.addView(
             scroll,
-            LinearLayout.LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 0,
                 1f
@@ -369,7 +371,7 @@ class DesktopAppMenu(
 
         scroll.addView(
             apps,
-            ScrollView.LinearLayout.LayoutParams(
+            ScrollView.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT
             )
@@ -377,7 +379,7 @@ class DesktopAppMenu(
 
         root.addView(
             scroll,
-            LinearLayout.LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 0,
                 1f
@@ -419,7 +421,7 @@ class DesktopAppMenu(
 
         row.addView(
             icon,
-            LinearLayout.LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams(
                 dp(42),
                 dp(42)
             )
@@ -444,7 +446,7 @@ class DesktopAppMenu(
 
         row.addView(
             name,
-            LinearLayout.LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams(
                 0,
                 dp(54),
                 1f
@@ -485,7 +487,7 @@ class DesktopAppMenu(
 
         row.addView(
             icon,
-            LinearLayout.LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams(
                 dp(48),
                 dp(56)
             )
@@ -510,7 +512,7 @@ class DesktopAppMenu(
 
         row.addView(
             label,
-            LinearLayout.LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams(
                 0,
                 dp(56),
                 1f
@@ -523,7 +525,7 @@ class DesktopAppMenu(
 
         parent.addView(
             row,
-            LinearLayout.LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 dp(58)
             )
