@@ -335,7 +335,17 @@ class DesktopAppMenu(
                                         )
                                     )
 
-                                } catch (_: Exception) {
+                                } catch (e: Exception) {
+                                    android.util.Log.e(
+                                        "METMC-LinuxApps",
+                                        "Linux launch failed: ${app.first} -> ${app.second}",
+                                        e
+                                    )
+                                    android.widget.Toast.makeText(
+                                        context,
+                                        "Failed to launch ${app.first}",
+                                        android.widget.Toast.LENGTH_SHORT
+                                    ).show()
                                 }
                             }
                         }
@@ -552,8 +562,29 @@ class DesktopAppMenu(
             )
         )
 
+        row.isClickable = true
+        row.isFocusable = true
+
+        icon.isClickable = false
+        icon.isFocusable = false
+        label.isClickable = false
+        label.isFocusable = false
+
         row.setOnClickListener {
-            action()
+            try {
+                action()
+            } catch (e: Exception) {
+                android.util.Log.e(
+                    "METMC-LinuxApps",
+                    "Failed to launch: $text",
+                    e
+                )
+                android.widget.Toast.makeText(
+                    context,
+                    "Failed to launch $text",
+                    android.widget.Toast.LENGTH_SHORT
+                ).show()
+            }
         }
 
         parent.addView(
