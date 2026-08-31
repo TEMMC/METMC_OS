@@ -310,11 +310,20 @@ class DesktopAppMenu(
                                 try {
 
                                     val launchCommand =
+                                        "export DISPLAY=:100; " +
                                         "export HOME=/root; " +
                                         "export USER=root; " +
                                         "export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin; " +
-                                        "chroot /data/local/linux/rootfs /bin/bash -c " +
+                                        "export XDG_RUNTIME_DIR=/tmp/metmc-runtime; " +
+                                        "mkdir -p /tmp/metmc-runtime /tmp/.X11-unix; " +
+                                        "chmod 700 /tmp/metmc-runtime; " +
+                                        "chroot /data/local/linux/rootfs /bin/bash -lc " +
                                         shellQuote(
+                                            "export DISPLAY=:100; " +
+                                            "export HOME=/root; " +
+                                            "export USER=root; " +
+                                            "export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin; " +
+                                            "export XDG_RUNTIME_DIR=/tmp/metmc-runtime; " +
                                             app.second
                                         )
 
