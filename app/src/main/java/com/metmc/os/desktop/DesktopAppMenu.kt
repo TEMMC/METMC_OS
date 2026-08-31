@@ -16,8 +16,6 @@ class DesktopAppMenu(
     private val onLaunchWindow: (String, View) -> Unit
 ) {
 
-    private val rootfs = "/data/local/linux/rootfs"
-
     fun showAndroidApps() {
 
         val activity = context as? Activity ?: return
@@ -31,6 +29,7 @@ class DesktopAppMenu(
         title.textSize = 20f
         title.setTextColor(Color.WHITE)
         title.setPadding(dp(8), dp(6), dp(8), dp(12))
+
         root.addView(title)
 
         val scroll = ScrollView(context)
@@ -40,30 +39,33 @@ class DesktopAppMenu(
 
         val pm = context.packageManager
 
-        val installed = pm.getInstalledApplications(
-            PackageManager.GET_META_DATA
+        val intent = Intent(Intent.ACTION_MAIN)
+        intent.addCategory(Intent.CATEGORY_LAUNCHER)
+
+        val activities = pm.queryIntentActivities(
+            intent,
+            PackageManager.MATCH_ALL
         ).sortedBy {
-            pm.getApplicationLabel(it)
-                .toString()
-                .lowercase()
+            it.loadLabel(pm).toString().lowercase()
         }
 
-        var count = 0
+        val added = HashSet<String>()
 
-        installed.forEach { appInfo ->
+        activities.forEach { resolveInfo ->
 
-            val packageName = appInfo.packageName
+            val packageName =
+                resolveInfo.activityInfo.packageName
 
             if (packageName == context.packageName) {
                 return@forEach
             }
 
-            val launchIntent =
-                pm.getLaunchIntentForPackage(packageName)
-                    ?: return@forEach
+            if (!added.add(packageName)) {
+                return@forEach
+            }
 
             val label =
-                pm.getApplicationLabel(appInfo)
+                resolveInfo.loadLabel(pm)
                     .toString()
                     .trim()
 
@@ -71,44 +73,35 @@ class DesktopAppMenu(
                 return@forEach
             }
 
-            val row = LinearLayout(context)
-            row.orientation = LinearLayout.HORIZONTAL
-            row.gravity = Gravity.CENTER_VERTICAL
-            row.setPadding(
-                dp(8), dp(6),
-                dp(8), dp(6)
-            )
-
-            val icon = ImageView(context)
-            icon.setImageDrawable(appInfo.loadIcon(pm))
-
-            row.addView(
-                icon,
-                LinearLayout.LayoutParams(
-                    dp(42), dp(42)
-                )
-            )
-
-            val name = TextView(context)
-            name.text = label
-            name.textSize = 16f
-            name.setTextColor(Color.WHITE)
-            name.setPadding(dp(12), 0, dp(8), 0)
-            name.gravity = Gravity.CENTER_VERTICAL
-
-            row.addView(
-                name,
-                LinearLayout.LayoutParams(
-                    0, dp(54), 1f
-                )
+            val row = createAppRow(
+                resolveInfo.loadIcon(pm),
+                label
             )
 
             row.setOnClickListener {
+
                 try {
+
+                    val launchIntent =
+                        Intent(Intent.ACTION_MAIN)
+
+                    launchIntent.addCategory(
+                        Intent.CATEGORY_LAUNCHER
+                    )
+
+                    launchIntent.setClassName(
+                        packageName,
+                        resolveInfo.activityInfo.name
+                    )
+
                     launchIntent.addFlags(
                         Intent.FLAG_ACTIVITY_NEW_TASK
                     )
-                    context.startActivity(launchIntent)
+
+                    context.startActivity(
+                        launchIntent
+                    )
+
                 } catch (_: Exception) {
                 }
             }
@@ -120,21 +113,11 @@ class DesktopAppMenu(
                     dp(58)
                 )
             )
-
-            count++
-        }
-
-        if (count == 0) {
-            val empty = TextView(context)
-            empty.text = "No launchable Android applications found."
-            empty.setTextColor(Color.LTGRAY)
-            empty.setPadding(dp(12), dp(20), dp(12), dp(20))
-            apps.addView(empty)
         }
 
         scroll.addView(
             apps,
-            ViewGroup.LayoutParams(
+            ScrollView.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT
             )
@@ -168,6 +151,7 @@ class DesktopAppMenu(
         title.textSize = 20f
         title.setTextColor(Color.WHITE)
         title.setPadding(dp(8), dp(6), dp(8), dp(12))
+
         root.addView(title)
 
         val scroll = ScrollView(context)
@@ -179,6 +163,7 @@ class DesktopAppMenu(
             apps,
             "Terminal"
         ) {
+
             context.startActivity(
                 Intent(
                     context,
@@ -189,15 +174,201 @@ class DesktopAppMenu(
             )
         }
 
-        val loading = TextView(context)
-        loading.text = "Scanning Linux applications..."
-        loading.setTextColor(Color.LTGRAY)
-        loading.setPadding(dp(14), dp(12), dp(14), dp(12))
-        apps.addView(loading)
+        Thread {
+
+            try {
+
+                val process =
+                    Runtime.getRuntime().exec(
+                        arrayOf(
+                            "/debug_ramdisk/su",
+                            "-c",
+                            "chroot /data/local/linux/rootfs /bin/bash -c " +
+                            "'find /usr/share/applications /usr/local/share/applications " +
+                            "-type f -name \"*.desktop\" 2>/dev/null'"
+                        )
+                    )
+
+                val reader =
+                    process.inputStream.bufferedReader()
+
+                val desktopFiles =
+                    reader.readLines()
+                        .filter {
+                            it.isNotBlank()
+                        }
+                        .sorted()
+
+                val linuxApps =
+                    ArrayList<Pair<String, String>>()
+
+                desktopFiles.forEach { path ->
+
+                    try {
+
+                        val infoProcess =
+                            Runtime.getRuntime().exec(
+                                arrayOf(
+                                    "/debug_ramdisk/su",
+                                    "-c",
+                                    "chroot /data/local/linux/rootfs /bin/bash -c " +
+                                    "'grep -E \"^(Name|Exec)=\" " +
+                                    "\"$path\" 2>/dev/null'"
+                                )
+                            )
+
+                        val lines =
+                            infoProcess.inputStream
+                                .bufferedReader()
+                                .readLines()
+
+                        var name: String? = null
+                        var exec: String? = null
+
+                        lines.forEach { line ->
+
+                            when {
+
+                                line.startsWith("Name=") &&
+                                name == null -> {
+
+                                    name =
+                                        line.removePrefix("Name=")
+                                }
+
+                                line.startsWith("Exec=") &&
+                                exec == null -> {
+
+                                    exec =
+                                        line.removePrefix("Exec=")
+                                            .replace(
+                                                Regex("\\s+%[a-zA-Z]"),
+                                                ""
+                                            )
+                                            .trim()
+                                }
+                            }
+                        }
+
+                        if (
+                            !name.isNullOrBlank() &&
+                            !exec.isNullOrBlank()
+                        ) {
+
+                            linuxApps.add(
+                                Pair(
+                                    name!!,
+                                    exec!!
+                                )
+                            )
+                        }
+
+                    } catch (_: Exception) {
+                    }
+                }
+
+                val unique =
+                    linuxApps
+                        .distinctBy {
+                            it.first.lowercase()
+                        }
+                        .sortedBy {
+                            it.first.lowercase()
+                        }
+
+                (context as? Activity)
+                    ?.runOnUiThread {
+
+                        unique.forEach { app ->
+
+                            addLinuxButton(
+                                apps,
+                                app.first
+                            ) {
+
+                                try {
+
+                                    val command =
+                                        "chroot /data/local/linux/rootfs " +
+                                        "/bin/bash -c " +
+                                        shellQuote(
+                                            "export HOME=/root; " +
+                                            "export DISPLAY=:0; " +
+                                            "export XDG_RUNTIME_DIR=/tmp; " +
+                                            app.second
+                                        )
+
+                                    Runtime.getRuntime().exec(
+                                        arrayOf(
+                                            "/debug_ramdisk/su",
+                                            "-c",
+                                            command
+                                        )
+                                    )
+
+                                } catch (_: Exception) {
+                                }
+                            }
+                        }
+
+                        if (unique.isEmpty()) {
+
+                            val empty =
+                                TextView(context)
+
+                            empty.text =
+                                "No Linux desktop applications installed.\n\n" +
+                                "Install a Linux application from Terminal. " +
+                                "Applications with .desktop launchers will appear here."
+
+                            empty.textSize = 16f
+                            empty.setTextColor(
+                                Color.LTGRAY
+                            )
+
+                            empty.setPadding(
+                                dp(14),
+                                dp(20),
+                                dp(14),
+                                dp(20)
+                            )
+
+                            apps.addView(empty)
+                        }
+                    }
+
+            } catch (_: Exception) {
+
+                (context as? Activity)
+                    ?.runOnUiThread {
+
+                        val error =
+                            TextView(context)
+
+                        error.text =
+                            "Unable to scan the METMC Linux environment."
+
+                        error.textSize = 16f
+                        error.setTextColor(
+                            Color.LTGRAY
+                        )
+
+                        error.setPadding(
+                            dp(14),
+                            dp(20),
+                            dp(14),
+                            dp(20)
+                        )
+
+                        apps.addView(error)
+                    }
+            }
+
+        }.start()
 
         scroll.addView(
             apps,
-            ViewGroup.LayoutParams(
+            ScrollView.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT
             )
@@ -218,199 +389,68 @@ class DesktopAppMenu(
             "Linux Applications",
             root
         )
-
-        Thread {
-
-            val found = linkedSetOf<String>()
-
-            val command =
-                "for d in /usr/share/applications /usr/local/share/applications; do " +
-                "[ -d \"\$d\" ] || continue; " +
-                "find \"\$d\" -maxdepth 1 -type f -name '*.desktop' 2>/dev/null; " +
-                "done"
-
-            try {
-
-                val process = ProcessBuilder(
-                    "/debug_ramdisk/su",
-                    "-c",
-                    "chroot $rootfs /bin/bash -c ${quote(command)}"
-                )
-                    .redirectErrorStream(true)
-                    .start()
-
-                process.inputStream.bufferedReader().useLines { lines ->
-
-                    lines.forEach { desktopPath ->
-
-                        try {
-
-                            val file = java.io.File(
-                                rootfs + desktopPath
-                            )
-
-                            if (!file.exists()) {
-                                return@forEach
-                            }
-
-                            var name: String? = null
-                            var exec: String? = null
-                            var terminal = false
-
-                            file.forEachLine { line ->
-
-                                when {
-
-                                    line.startsWith("Name=") &&
-                                    name == null -> {
-                                        name =
-                                            line.substringAfter("Name=")
-                                    }
-
-                                    line.startsWith("Exec=") &&
-                                    exec == null -> {
-                                        exec =
-                                            line.substringAfter("Exec=")
-                                    }
-
-                                    line == "Terminal=true" -> {
-                                        terminal = true
-                                    }
-                                }
-                            }
-
-                            val appName =
-                                name?.trim()
-
-                            val appExec =
-                                exec
-                                    ?.trim()
-                                    ?.replace(
-                                        Regex("\\s+%[fFuUdDnNickvm]"),
-                                        ""
-                                    )
-                                    ?.trim()
-
-                            if (
-                                !appName.isNullOrEmpty() &&
-                                !appExec.isNullOrEmpty()
-                            ) {
-
-                                found.add(
-                                    appName + "\u0001" +
-                                    appExec + "\u0001" +
-                                    terminal
-                                )
-                            }
-
-                        } catch (_: Exception) {
-                        }
-                    }
-                }
-
-            } catch (_: Exception) {
-            }
-
-            context.mainExecutor.execute {
-
-                apps.removeView(loading)
-
-                if (found.isEmpty()) {
-
-                    val empty = TextView(context)
-                    empty.text =
-                        "No Linux desktop applications found.\n" +
-                        "Install Linux applications inside the METMC Linux environment."
-                    empty.setTextColor(Color.LTGRAY)
-                    empty.setPadding(
-                        dp(14), dp(12),
-                        dp(14), dp(12)
-                    )
-
-                    apps.addView(empty)
-
-                } else {
-
-                    found
-                        .sortedBy {
-                            it.substringBefore("\u0001")
-                                .lowercase()
-                        }
-                        .forEach { entry ->
-
-                            val parts =
-                                entry.split(
-                                    "\u0001",
-                                    limit = 3
-                                )
-
-                            val appName = parts[0]
-                            val appExec = parts[1]
-                            val terminal =
-                                parts.getOrNull(2) == "true"
-
-                            addLinuxButton(
-                                apps,
-                                appName
-                            ) {
-
-                                launchLinuxApp(
-                                    appExec,
-                                    terminal
-                                )
-                            }
-                        }
-                }
-            }
-
-        }.start()
     }
 
-    private fun launchLinuxApp(
-        command: String,
-        terminal: Boolean
-    ) {
+    private fun createAppRow(
+        drawable: android.graphics.drawable.Drawable,
+        text: String
+    ): LinearLayout {
 
-        if (terminal) {
+        val row = LinearLayout(context)
 
-            val intent = Intent(
-                context,
-                com.metmc.os.linux.LinuxTerminalActivity::class.java
+        row.orientation =
+            LinearLayout.HORIZONTAL
+
+        row.gravity =
+            Gravity.CENTER_VERTICAL
+
+        row.setPadding(
+            dp(8),
+            dp(6),
+            dp(8),
+            dp(6)
+        )
+
+        val icon =
+            ImageView(context)
+
+        icon.setImageDrawable(drawable)
+
+        row.addView(
+            icon,
+            LinearLayout.LayoutParams(
+                dp(42),
+                dp(42)
             )
+        )
 
-            intent.putExtra(
-                "command",
-                command
+        val name =
+            TextView(context)
+
+        name.text = text
+        name.textSize = 16f
+        name.setTextColor(Color.WHITE)
+
+        name.setPadding(
+            dp(12),
+            0,
+            dp(8),
+            0
+        )
+
+        name.gravity =
+            Gravity.CENTER_VERTICAL
+
+        row.addView(
+            name,
+            LinearLayout.LayoutParams(
+                0,
+                dp(54),
+                1f
             )
+        )
 
-            intent.addFlags(
-                Intent.FLAG_ACTIVITY_NEW_TASK
-            )
-
-            context.startActivity(intent)
-
-            return
-        }
-
-        try {
-
-            val shellCommand =
-                "export HOME=/root; " +
-                "export USER=root; " +
-                "export DISPLAY=:0; " +
-                "export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin; " +
-                command
-
-            ProcessBuilder(
-                "/debug_ramdisk/su",
-                "-c",
-                "chroot $rootfs /bin/bash -c ${quote(shellCommand)}"
-            )
-                .redirectErrorStream(true)
-                .start()
-
-        } catch (_: Exception) {
-        }
+        return row
     }
 
     private fun addLinuxButton(
@@ -419,18 +459,30 @@ class DesktopAppMenu(
         action: () -> Unit
     ) {
 
-        val button = LinearLayout(context)
-        button.orientation = LinearLayout.HORIZONTAL
-        button.gravity = Gravity.CENTER_VERTICAL
-        button.setPadding(dp(14), 0, dp(14), 0)
+        val row =
+            LinearLayout(context)
 
-        val icon = TextView(context)
+        row.orientation =
+            LinearLayout.HORIZONTAL
+
+        row.gravity =
+            Gravity.CENTER_VERTICAL
+
+        row.setPadding(
+            dp(14),
+            0,
+            dp(14),
+            0
+        )
+
+        val icon =
+            TextView(context)
+
         icon.text = "▣"
         icon.textSize = 24f
         icon.setTextColor(Color.WHITE)
-        icon.gravity = Gravity.CENTER
 
-        button.addView(
+        row.addView(
             icon,
             LinearLayout.LayoutParams(
                 dp(48),
@@ -438,14 +490,24 @@ class DesktopAppMenu(
             )
         )
 
-        val label = TextView(context)
+        val label =
+            TextView(context)
+
         label.text = text
         label.textSize = 16f
         label.setTextColor(Color.WHITE)
-        label.gravity = Gravity.CENTER_VERTICAL
-        label.setPadding(dp(10), 0, 0, 0)
 
-        button.addView(
+        label.gravity =
+            Gravity.CENTER_VERTICAL
+
+        label.setPadding(
+            dp(10),
+            0,
+            0,
+            0
+        )
+
+        row.addView(
             label,
             LinearLayout.LayoutParams(
                 0,
@@ -454,12 +516,12 @@ class DesktopAppMenu(
             )
         )
 
-        button.setOnClickListener {
+        row.setOnClickListener {
             action()
         }
 
         parent.addView(
-            button,
+            row,
             LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 dp(58)
@@ -467,7 +529,7 @@ class DesktopAppMenu(
         )
     }
 
-    private fun quote(
+    private fun shellQuote(
         value: String
     ): String {
 
@@ -479,25 +541,31 @@ class DesktopAppMenu(
             "'"
     }
 
-    private fun style(view: View) {
+    private fun style(
+        view: View
+    ) {
 
         view.background =
             GradientDrawable().apply {
+
                 setColor(
                     Color.rgb(25, 27, 34)
                 )
+
                 cornerRadius =
                     dp(10).toFloat()
             }
     }
 
-    private fun dp(value: Int): Int {
+    private fun dp(
+        value: Int
+    ): Int {
 
         return (
             value *
-                context.resources
-                    .displayMetrics
-                    .density
+            context.resources
+                .displayMetrics
+                .density
         ).toInt()
     }
 }
