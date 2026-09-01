@@ -269,14 +269,13 @@ public class LinuxDesktopActivity extends Activity {
 
                 String command =
                         "export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin; " +
-                        "export HOME=/root; " +
-                        "export USER=root; " +
                         "export DISPLAY=:100; " +
                         "export XDG_RUNTIME_DIR=/tmp/metmc-runtime; " +
 
                         "mkdir -p /tmp/.X11-unix /tmp/metmc-runtime; " +
                         "chmod 1777 /tmp/.X11-unix; " +
                         "chmod 700 /tmp/metmc-runtime; " +
+                        "id metmc >/dev/null 2>&1 || useradd -m -s /bin/bash metmc; " +
 
                         "if ! pgrep -x Xvfb >/dev/null 2>&1; then " +
                         "rm -f /tmp/.X100-lock /tmp/.X11-unix/X100; " +
@@ -388,7 +387,8 @@ public class LinuxDesktopActivity extends Activity {
 
                         "APP=$(" + execCommand + "); " +
                         "[ -n \"$APP\" ] || exit 21; " +
-                        "DISPLAY=:100 sh -c \"$APP\" " +
+                        "su -s /bin/bash metmc -c " +
+                        "\"export DISPLAY=:100; export HOME=/home/metmc; export USER=metmc; export XDG_RUNTIME_DIR=/tmp/metmc-runtime; sh -c \\\"$APP\\\"" +
                         ">/tmp/metmc-app.log 2>&1 &";
 
                 new ProcessBuilder(
