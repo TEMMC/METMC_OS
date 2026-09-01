@@ -179,7 +179,6 @@ class DesktopAppMenu(
         title.textSize = 20f
         title.setTextColor(Color.WHITE)
         title.setPadding(dp(8), dp(6), dp(8), dp(12))
-
         root.addView(title)
 
         val scroll = ScrollView(context)
@@ -191,25 +190,21 @@ class DesktopAppMenu(
             apps,
             "Terminal"
         ) {
-
-            context.startActivity(
-                Intent(
+            try {
+                val intent = Intent(
                     context,
                     com.metmc.os.linux.LinuxTerminalActivity::class.java
-                ).addFlags(
-                    Intent.FLAG_ACTIVITY_NEW_TASK
                 )
-            )
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                context.startActivity(intent)
+            } catch (_: Exception) {
+            }
         }
 
         val status = TextView(context)
-
-        status.text =
-            "Scanning Linux applications..."
-
+        status.text = "Scanning Linux applications..."
         status.textSize = 16f
         status.setTextColor(Color.LTGRAY)
-
         status.setPadding(
             dp(14),
             dp(20),
@@ -255,8 +250,7 @@ class DesktopAppMenu(
                 val linuxApps =
                     result.mapNotNull { line ->
 
-                        val index =
-                            line.indexOf("|")
+                        val index = line.indexOf("|")
 
                         if (index <= 0) {
                             null
@@ -334,27 +328,18 @@ class DesktopAppMenu(
                                 } catch (_: Exception) {
                                 }
                             }
-                            }
                         }
 
-                        if (
-                            linuxApps.isEmpty()
-                        ) {
+                        if (linuxApps.isEmpty()) {
 
                             val empty =
                                 TextView(context)
 
                             empty.text =
-                                "No Linux desktop applications found.\n\n" +
-                                "The Terminal is working independently. " +
-                                "Install a Linux desktop application that provides a .desktop launcher, " +
-                                "then reopen this window."
+                                "No Linux desktop applications found."
 
                             empty.textSize = 16f
-
-                            empty.setTextColor(
-                                Color.LTGRAY
-                            )
+                            empty.setTextColor(Color.LTGRAY)
 
                             empty.setPadding(
                                 dp(14),
@@ -381,10 +366,7 @@ class DesktopAppMenu(
                             "Unable to scan the METMC Linux environment."
 
                         error.textSize = 16f
-
-                        error.setTextColor(
-                            Color.LTGRAY
-                        )
+                        error.setTextColor(Color.LTGRAY)
 
                         error.setPadding(
                             dp(14),
