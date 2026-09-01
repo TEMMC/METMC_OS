@@ -1,147 +1,298 @@
 #include <jni.h>
-#include <android/native_window.h>
 #include <android/native_window_jni.h>
 #include <android/log.h>
-#include <thread>
+
 #include <atomic>
-#include <vector>
-#include <cstring>
+#include <thread>
+#include <mutex>
 
-#define LOG_TAG "METMC_DISPLAY"
+#define LOG_TAG "METMC-Native"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
-#define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
 
-static ANativeWindow *g_window = nullptr;
-static std::thread g_thread;
-static std::atomic<bool> g_running(false);
+class METMCDisplay {
+public:
+    ANativeWindow* window = nullptr;
 
-static int g_width = 0;
-static int g_height = 0;
+    std::atomic<bool> running{false};
 
-static void renderLoop() {
-    while (g_running) {
-        if (g_window == nullptr || g_width <= 0 || g_height <= 0) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(50));
-            continue;
+    std::thread renderThread;
+
+    std::mutex windowMutex;
+
+    int width = 1280;
+    int height = 720;
+
+    void setWindow(JNIEnv* env, jobject surface) {
+
+        std::lock_guard<std::mutex> lock(windowMutex);
+
+        if (window != nullptr) {
+            ANativeWindow_release(window);
+            window = nullptr;
         }
 
-        ANativeWindow_Buffer buffer;
+        if (surface != nullptr) {
+            window =
+                ANativeWindow_fromSurface(
+                    env,
+                    surface
+                );
+        }
+    }
 
-        if (ANativeWindow_lock(g_window, &buffer, nullptr) == 0) {
+    void resize(
+            int newWidth,
+            int newHeight
+    ) {
+        width = newWidth;
+        height = newHeight;
+    }
 
-            uint8_t *dst =
-                static_cast<uint8_t *>(buffer.bits);
+    void start() {
 
-            for (int y = 0; y < buffer.height; ++y) {
-                uint32_t *row =
-                    reinterpret_cast<uint32_t *>(
-                        dst + y * buffer.stride * 4
-                    );
+        if (running.exchange(true)) {
+            return;
+        }
 
-                for (int x = 0; x < buffer.width; ++x) {
-                    /*
-                     * Temporary desktop test pattern.
-                     * This proves the Android Surface pipeline works.
-                     * Linux X11 pixels will replace this framebuffer.
-                     */
-                    uint8_t r =
-                        static_cast<uint8_t>((x * 255) /
-                        (buffer.width > 1 ? buffer.width - 1 : 1));
+        renderThread =
+            std::thread(
+                [this]() {
+                    renderLoop();
+                }
+            );
+    }
 
-                    uint8_t g =
-                        static_cast<uint8_t>((y * 255) /
-                        (buffer.height > 1 ? buffer.height - 1 : 1));
+    void stop() {
 
-                    uint8_t b = 35;
+        if (!running.exchange(false)) {
+            return;
+        }
 
-                    row[x] =
-                        (0xFFu << 24) |
-                        (static_cast<uint32_t>(b) << 16) |
-                        (static_cast<uint32_t>(g) << 8) |
-                        r;
+        if (renderThread.joinable()) {
+            renderThread.join();
+        }
+    }
+
+    void renderLoop() {
+
+        LOGI("METMC native display started");
+
+        while (running) {
+
+            {
+                std::lock_guard<std::mutex>
+                    lock(windowMutex);
+
+                if (window != nullptr) {
+
+                    ANativeWindow_Buffer buffer;
+
+                    if (ANativeWindow_lock(
+                            window,
+                            &buffer,
+                            nullptr
+                    ) == 0) {
+
+                        uint32_t* pixels =
+                            static_cast<uint32_t*>(
+                                buffer.bits
+                            );
+
+                        int stride =
+                            buffer.stride;
+
+                        for (
+                            int y = 0;
+                            y < buffer.height;
+                            y++
+                        ) {
+
+                            for (
+                                int x = 0;
+                                x < buffer.width;
+                                x++
+                            ) {
+
+                                uint8_t r =
+                                    (x * 255) /
+                                    (buffer.width > 0
+                                        ? buffer.width
+                                        : 1);
+
+                                uint8_t g =
+                                    (y * 255) /
+                                    (buffer.height > 0
+                                        ? buffer.height
+                                        : 1);
+
+                                uint8_t b = 32;
+
+                                pixels[
+                                    y * stride + x
+                                ] =
+                                    0xFF000000 |
+                                    (r << 16) |
+                                    (g << 8) |
+                                    b;
+                            }
+                        }
+
+                        ANativeWindow_unlockAndPost(
+                            window
+                        );
+                    }
                 }
             }
 
-            ANativeWindow_unlockAndPost(g_window);
+            std::this_thread::sleep_for(
+                std::chrono::milliseconds(16)
+            );
         }
 
-        std::this_thread::sleep_for(
-            std::chrono::milliseconds(33)
+        LOGI("METMC native display stopped");
+    }
+
+    ~METMCDisplay() {
+
+        stop();
+
+        std::lock_guard<std::mutex>
+            lock(windowMutex);
+
+        if (window != nullptr) {
+
+            ANativeWindow_release(window);
+
+            window = nullptr;
+        }
+    }
+};
+
+extern "C"
+JNIEXPORT jlong JNICALL
+Java_com_metmc_os_x11_NativeDisplayView_nativeCreate(
+        JNIEnv*,
+        jclass
+) {
+
+    return reinterpret_cast<jlong>(
+        new METMCDisplay()
+    );
+}
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_metmc_os_x11_NativeDisplayView_nativeDestroy(
+        JNIEnv*,
+        jclass,
+        jlong handle
+) {
+
+    delete reinterpret_cast<METMCDisplay*>(
+        handle
+    );
+}
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_metmc_os_x11_NativeDisplayView_nativeSetSurface(
+        JNIEnv* env,
+        jclass,
+        jlong handle,
+        jobject surface
+) {
+
+    auto* display =
+        reinterpret_cast<METMCDisplay*>(
+            handle
+        );
+
+    if (display != nullptr) {
+        display->setWindow(
+            env,
+            surface
         );
     }
 }
 
 extern "C"
-JNIEXPORT jboolean JNICALL
-Java_com_metmc_os_linux_MetmcDisplayBridge_nativeStart(
-        JNIEnv *env,
-        jobject,
-        jobject surface,
+JNIEXPORT void JNICALL
+Java_com_metmc_os_x11_NativeDisplayView_nativeResize(
+        JNIEnv*,
+        jclass,
+        jlong handle,
         jint width,
-        jint height) {
+        jint height
+) {
 
-    if (!surface) {
-        LOGE("Surface is null");
-        return JNI_FALSE;
+    auto* display =
+        reinterpret_cast<METMCDisplay*>(
+            handle
+        );
+
+    if (display != nullptr) {
+        display->resize(
+            width,
+            height
+        );
     }
-
-    if (g_running) {
-        g_running = false;
-
-        if (g_thread.joinable())
-            g_thread.join();
-    }
-
-    if (g_window) {
-        ANativeWindow_release(g_window);
-        g_window = nullptr;
-    }
-
-    g_window =
-        ANativeWindow_fromSurface(env, surface);
-
-    if (!g_window) {
-        LOGE("Unable to acquire Android Surface");
-        return JNI_FALSE;
-    }
-
-    g_width = width;
-    g_height = height;
-
-    ANativeWindow_setBuffersGeometry(
-        g_window,
-        width,
-        height,
-        WINDOW_FORMAT_RGBA_8888
-    );
-
-    g_running = true;
-    g_thread = std::thread(renderLoop);
-
-    LOGI(
-        "METMC Surface bridge started %dx%d",
-        width,
-        height
-    );
-
-    return JNI_TRUE;
 }
 
 extern "C"
 JNIEXPORT void JNICALL
-Java_com_metmc_os_linux_MetmcDisplayBridge_nativeStop(
-        JNIEnv *,
-        jobject) {
+Java_com_metmc_os_x11_NativeDisplayView_nativeStart(
+        JNIEnv*,
+        jclass,
+        jlong handle
+) {
 
-    g_running = false;
+    auto* display =
+        reinterpret_cast<METMCDisplay*>(
+            handle
+        );
 
-    if (g_thread.joinable())
-        g_thread.join();
-
-    if (g_window) {
-        ANativeWindow_release(g_window);
-        g_window = nullptr;
+    if (display != nullptr) {
+        display->start();
     }
+}
 
-    LOGI("METMC Surface bridge stopped");
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_metmc_os_x11_NativeDisplayView_nativeStop(
+        JNIEnv*,
+        jclass,
+        jlong handle
+) {
+
+    auto* display =
+        reinterpret_cast<METMCDisplay*>(
+            handle
+        );
+
+    if (display != nullptr) {
+        display->stop();
+    }
+}
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_metmc_os_x11_NativeDisplayView_nativePointer(
+        JNIEnv*,
+        jclass,
+        jlong,
+        jfloat,
+        jfloat,
+        jint
+) {
+}
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_metmc_os_x11_NativeDisplayView_nativeKey(
+        JNIEnv*,
+        jclass,
+        jlong,
+        jint,
+        jboolean
+) {
 }

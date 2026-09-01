@@ -68,6 +68,12 @@
         <activity
             android:name=".settings.SettingsActivity"
             android:exported="false" />
-</application>
+
+        <activity
+            android:name=".x11.NativeX11Activity"
+            android:screenOrientation="landscape"
+            android:configChanges="keyboardHidden|orientation|screenSize" />
+
+    </application>
 
 </manifest>
