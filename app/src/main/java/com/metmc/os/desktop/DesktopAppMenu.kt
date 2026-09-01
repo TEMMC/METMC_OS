@@ -309,44 +309,31 @@ class DesktopAppMenu(
 
                                 try {
 
-                                    val launchCommand =
-                                        "export DISPLAY=:100; " +
-                                        "export HOME=/root; " +
-                                        "export USER=root; " +
-                                        "export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin; " +
-                                        "export XDG_RUNTIME_DIR=/tmp/metmc-runtime; " +
-                                        "mkdir -p /tmp/metmc-runtime /tmp/.X11-unix; " +
-                                        "chmod 700 /tmp/metmc-runtime; " +
-                                        "chroot /data/local/linux/rootfs /bin/bash -lc " +
-                                        shellQuote(
-                                            "export DISPLAY=:100; " +
-                                            "export HOME=/root; " +
-                                            "export USER=root; " +
-                                            "export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin; " +
-                                            "export XDG_RUNTIME_DIR=/tmp/metmc-runtime; " +
-                                            app.second
+                                    val intent =
+                                        Intent(
+                                            context,
+                                            com.metmc.os.linux.LinuxDesktopActivity::class.java
                                         )
 
-                                    Runtime.getRuntime().exec(
-                                        arrayOf(
-                                            "/debug_ramdisk/su",
-                                            "-c",
-                                            launchCommand
-                                        )
+                                    intent.addFlags(
+                                        Intent.FLAG_ACTIVITY_NEW_TASK
                                     )
 
-                                } catch (e: Exception) {
-                                    android.util.Log.e(
-                                        "METMC-LinuxApps",
-                                        "Linux launch failed: ${app.first} -> ${app.second}",
-                                        e
+                                    intent.putExtra(
+                                        "METMC_LINUX_COMMAND",
+                                        app.second
                                     )
-                                    android.widget.Toast.makeText(
-                                        context,
-                                        "Failed to launch ${app.first}",
-                                        android.widget.Toast.LENGTH_SHORT
-                                    ).show()
+
+                                    intent.putExtra(
+                                        "METMC_APP_NAME",
+                                        app.first
+                                    )
+
+                                    context.startActivity(intent)
+
+                                } catch (_: Exception) {
                                 }
+                            }
                             }
                         }
 
