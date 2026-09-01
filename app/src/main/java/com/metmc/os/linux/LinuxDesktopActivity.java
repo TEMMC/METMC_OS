@@ -275,6 +275,7 @@ public class LinuxDesktopActivity extends Activity {
                         "mkdir -p /tmp/.X11-unix /tmp/metmc-runtime; " +
                         "chmod 1777 /tmp/.X11-unix; " +
                         "chmod 700 /tmp/metmc-runtime; " +
+                        "chown metmc:metmc /tmp/metmc-runtime; " +
                         "id metmc >/dev/null 2>&1 || useradd -m -s /bin/bash metmc; " +
 
                         "if ! pgrep -x Xvfb >/dev/null 2>&1; then " +
