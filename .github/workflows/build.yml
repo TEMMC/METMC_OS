@@ -4,6 +4,10 @@ on:
   push:
     branches:
       - main
+      - x11-native
+  pull_request:
+    branches:
+      - main
   workflow_dispatch:
 
 jobs:
