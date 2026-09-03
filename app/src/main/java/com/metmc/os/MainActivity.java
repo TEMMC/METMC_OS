@@ -1234,7 +1234,7 @@ public class MainActivity extends Activity {
             )
         );
         box.addView(
-            desktop,
+            (FrameLayout) desktop,
             new LinearLayout.LayoutParams(-1,dp(55))
         );
 
