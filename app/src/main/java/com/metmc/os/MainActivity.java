@@ -7,6 +7,8 @@ import com.metmc.os.linux.DesktopWindow;
 import com.metmc.os.desktop.AndroidWindowLauncher;
 import com.metmc.os.desktop.MetmcDesktop;
 
+import com.metmc.os.shell.MetmcShell;
+
 import android.app.*;
 import android.os.*;
 import android.content.*;
@@ -65,7 +67,7 @@ public class MainActivity extends Activity {
         getWindow().setNavigationBarColor(Color.rgb(8,8,10));
 
         MetmcDesktop desktopView = new MetmcDesktop(this);
-        setContentView(desktopView);
+        setContentView(new MetmcShell(this).create());
         tick();
     }
 
