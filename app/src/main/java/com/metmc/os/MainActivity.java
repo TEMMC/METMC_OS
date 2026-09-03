@@ -1234,7 +1234,7 @@ public class MainActivity extends Activity {
             )
         );
         box.addView(
-            (FrameLayout) desktop,
+            desktop,
             new LinearLayout.LayoutParams(-1,dp(55))
         );
 
@@ -1352,12 +1352,12 @@ public class MainActivity extends Activity {
 
         DesktopWindow window = new DesktopWindow(
             this,
-            desktop,
+            area,
             "METMC Terminal",
             terminal
         );
 
-        desktop.addView(window);
+        area.addView(window);
         window.bringToFront();
         command.requestFocus();
     }
