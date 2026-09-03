@@ -1352,12 +1352,12 @@ public class MainActivity extends Activity {
 
         DesktopWindow window = new DesktopWindow(
             this,
-            area,
+            desktop,
             "METMC Terminal",
             terminal
         );
 
-        area.addView(window);
+        desktop.addView(window);
         window.bringToFront();
         command.requestFocus();
     }
