@@ -2,6 +2,7 @@ package com.metmc.os.shell
 
 import android.content.Context
 import android.content.Intent
+import android.app.Dialog
 import android.graphics.Color
 import android.graphics.Typeface
 import android.view.Gravity
