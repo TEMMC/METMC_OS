@@ -25,6 +25,7 @@ import java.net.*;
 import java.util.zip.GZIPInputStream;
 
 public class MainActivity extends Activity {
+    private FrameLayout area;
 
     LinearLayout root, desktop, dock;
     TextView clock, status;
@@ -220,7 +221,7 @@ public class MainActivity extends Activity {
         /*
          * Desktop workspace.
          */
-        FrameLayout area = new FrameLayout(this);
+        area = new FrameLayout(this);
 
         area.setBackgroundColor(BG);
 
