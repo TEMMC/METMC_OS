@@ -1357,7 +1357,7 @@ public class MainActivity extends Activity {
             terminal
         );
 
-        desktop.addView(window);
+        area.addView(window);
         window.bringToFront();
         command.requestFocus();
     }
