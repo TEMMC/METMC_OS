@@ -25,6 +25,9 @@ import java.net.*;
 import java.util.zip.GZIPInputStream;
 
 public class MainActivity extends Activity {
+
+    private FrameLayout desktopArea;
+
     private FrameLayout area;
 
     LinearLayout root, desktop, dock;
@@ -223,7 +226,7 @@ public class MainActivity extends Activity {
          */
         area = new FrameLayout(this);
 
-        area.setBackgroundColor(BG);
+        desktopArea.setBackgroundColor(BG);
 
         LinearLayout center =
             new LinearLayout(this);
@@ -283,7 +286,7 @@ public class MainActivity extends Activity {
             )
         );
 
-        area.addView(
+        desktopArea.addView(
             center,
             new FrameLayout.LayoutParams(
                 -1,-1
@@ -336,7 +339,7 @@ public class MainActivity extends Activity {
             dp(8)
         );
 
-        area.addView(
+        desktopArea.addView(
             dock,
             dockParams
         );
@@ -369,7 +372,7 @@ public class MainActivity extends Activity {
          * Workspace.
          */
         root.addView(
-            area,
+            desktopArea,
             new LinearLayout.LayoutParams(
                 -1,
                 0,
@@ -1353,12 +1356,12 @@ public class MainActivity extends Activity {
 
         DesktopWindow window = new DesktopWindow(
             this,
-            area,
+            desktopArea,
             "METMC Terminal",
             terminal
         );
 
-        area.addView(window);
+        desktopArea.addView(window);
         window.bringToFront();
         command.requestFocus();
     }
