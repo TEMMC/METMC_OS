@@ -1352,7 +1352,7 @@ public class MainActivity extends Activity {
 
         DesktopWindow window = new DesktopWindow(
             this,
-            desktop,
+            area,
             "METMC Terminal",
             terminal
         );
