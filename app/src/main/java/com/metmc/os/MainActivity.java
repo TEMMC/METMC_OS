@@ -1228,7 +1228,7 @@ public class MainActivity extends Activity {
                 "cat /etc/os-release; echo; uname -m",
                 r -> panel("Linux Status",r)));
 
-        Button desktop = btn("Open Linux Desktop");
+        Button desktop = btn("Applications");
         desktop.setOnClickListener(v ->
             startActivity(
                 new Intent(
