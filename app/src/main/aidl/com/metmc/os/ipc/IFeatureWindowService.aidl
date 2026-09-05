@@ -1,6 +1,7 @@
 package com.metmc.os.ipc;
 
 import android.view.SurfaceControlViewHost.SurfacePackage;
+import android.os.IBinder;
 
 interface IFeatureWindowService {
     // Called by core when a window of this feature should open.
