@@ -1229,14 +1229,10 @@ public class MainActivity extends Activity {
                 r -> panel("Linux Status",r)));
 
         Button desktop = btn("Applications");
-        desktop.setOnClickListener(v ->
-            startActivity(
-                new Intent(
-                    MainActivity.this,
-                    com.metmc.os.linux.LinuxDesktopActivity.class
-                )
-            )
-        );
+        desktop.setOnClickListener(v -> {
+            d.dismiss();
+            showLinuxDisplayWindow();
+        });
         box.addView(
             desktop,
             new LinearLayout.LayoutParams(-1,dp(55))
@@ -1589,6 +1585,31 @@ public class MainActivity extends Activity {
                 }
             })
             .show();
+    }
+
+    com.metmc.os.linux.LinuxDisplayView linuxDisplayView;
+    DesktopWindow linuxDisplayWindow;
+
+    void showLinuxDisplayWindow() {
+        if (linuxDisplayWindow != null && linuxDisplayWindow.getParent() != null) {
+            linuxDisplayWindow.setVisibility(View.VISIBLE);
+            linuxDisplayWindow.bringToFront();
+            return;
+        }
+
+        linuxDisplayView = new com.metmc.os.linux.LinuxDisplayView(this);
+
+        linuxDisplayWindow = new DesktopWindow(
+            this,
+            desktopArea,
+            "Linux Display",
+            linuxDisplayView
+        );
+
+        desktopArea.addView(linuxDisplayWindow);
+        linuxDisplayWindow.bringToFront();
+
+        addRunningTask("Linux Display", this::showLinuxDisplayWindow);
     }
 
     void tick() {
