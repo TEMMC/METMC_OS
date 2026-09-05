@@ -329,6 +329,23 @@ class MetmcDesktop(
             menu.showLinuxApps()
         }
 
+        val wallpaper = Button(context)
+        wallpaper.text = "Wallpaper"
+        wallpaper.isAllCaps = false
+        wallpaper.setTextColor(Color.WHITE)
+
+        box.addView(
+            wallpaper,
+            LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                dp(55)
+            )
+        )
+
+        wallpaper.setOnClickListener {
+            chooseWallpaper()
+        }
+
         createWindow(
             "Applications",
             box

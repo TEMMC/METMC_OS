@@ -7,7 +7,6 @@ import com.metmc.os.linux.DesktopWindow;
 import com.metmc.os.desktop.AndroidWindowLauncher;
 import com.metmc.os.desktop.MetmcDesktop;
 
-import com.metmc.os.shell.MetmcShell;
 
 import android.app.*;
 import android.os.*;
@@ -29,6 +28,7 @@ public class MainActivity extends Activity {
     private FrameLayout desktopArea;
 
     private FrameLayout area;
+    private MetmcDesktop desktopView;
 
     LinearLayout root, desktop, dock;
     TextView clock, status;
@@ -70,9 +70,19 @@ public class MainActivity extends Activity {
         getWindow().setStatusBarColor(Color.rgb(8,8,10));
         getWindow().setNavigationBarColor(Color.rgb(8,8,10));
 
-        MetmcDesktop desktopView = new MetmcDesktop(this);
-        setContentView(new MetmcShell(this).create());
+        desktopView = new MetmcDesktop(this);
+        setContentView(desktopView);
         tick();
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+
+        if (requestCode == 9001 && resultCode == RESULT_OK
+                && data != null && data.getData() != null) {
+            desktopView.applyWallpaper(data.getData());
+        }
     }
 
     // Central root executor for ALL METMC OS Debian/Linux features.

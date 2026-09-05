@@ -107,30 +107,8 @@ class DesktopAppMenu(
                 )
 
             row.setOnClickListener {
-
-                try {
-
-                    val launchIntent =
-                        Intent(Intent.ACTION_MAIN)
-
-                    launchIntent.addCategory(
-                        Intent.CATEGORY_LAUNCHER
-                    )
-
-                    launchIntent.setClassName(
-                        packageName,
-                        resolveInfo.activityInfo.name
-                    )
-
-                    launchIntent.addFlags(
-                        Intent.FLAG_ACTIVITY_NEW_TASK
-                    )
-
-                    context.startActivity(
-                        launchIntent
-                    )
-
-                } catch (_: Exception) {
+                (context as? Activity)?.let { activity ->
+                    com.metmc.os.desktop.AndroidWindowLauncher.launch(activity, packageName)
                 }
             }
 
@@ -190,15 +168,7 @@ class DesktopAppMenu(
             apps,
             "Terminal"
         ) {
-            try {
-                val intent = Intent(
-                    context,
-                    com.metmc.os.linux.LinuxTerminalActivity::class.java
-                )
-                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                context.startActivity(intent)
-            } catch (_: Exception) {
-            }
+            onLaunchWindow("METMC Terminal", buildTerminalView())
         }
 
         val status = TextView(context)
@@ -301,31 +271,29 @@ class DesktopAppMenu(
                                 app.first
                             ) {
 
-                                try {
+                                val activity = context as? Activity
 
-                                    val intent =
-                                        Intent(
-                                            context,
-                                            com.metmc.os.linux.LinuxDesktopActivity::class.java
-                                        )
+                                if (activity != null) {
+                                    val rootfs = "/data/local/linux/rootfs"
+                                    val fullCommand =
+                                        "export DISPLAY=:100; " +
+                                        "export XDG_RUNTIME_DIR=/tmp/metmc-runtime; " +
+                                        "mkdir -p /tmp/metmc-runtime; " +
+                                        "chmod 700 /tmp/metmc-runtime; " +
+                                        app.second +
+                                        " >/tmp/metmc-linux-app.log 2>&1 &"
 
-                                    intent.addFlags(
-                                        Intent.FLAG_ACTIVITY_NEW_TASK
+                                    com.metmc.os.linux.LinuxGuiLauncher.launch(
+                                        activity,
+                                        rootfs,
+                                        fullCommand
                                     )
 
-                                    intent.putExtra(
-                                        "METMC_LINUX_COMMAND",
-                                        app.second
-                                    )
+                                    val display =
+                                        com.metmc.os.linux.LinuxDisplayView(context)
 
-                                    intent.putExtra(
-                                        "METMC_APP_NAME",
-                                        app.first
-                                    )
-
-                                    context.startActivity(intent)
-
-                                } catch (_: Exception) {
+                                    onLaunchWindow(app.first, display)
+                                    display.start()
                                 }
                             }
                         }
@@ -563,6 +531,85 @@ class DesktopAppMenu(
                 dp(58)
             )
         )
+    }
+
+    private fun buildTerminalView(): View {
+
+        val terminal = LinearLayout(context)
+        terminal.orientation = LinearLayout.VERTICAL
+        terminal.setBackgroundColor(Color.rgb(8, 9, 12))
+
+        val scroll = ScrollView(context)
+        scroll.isFillViewport = true
+
+        val output = TextView(context)
+        output.text = "METMC Terminal\nroot@debian:~$ "
+        output.setTextColor(Color.WHITE)
+        output.textSize = 13f
+        output.setPadding(dp(14), dp(12), dp(14), dp(12))
+        output.setTextIsSelectable(true)
+
+        scroll.addView(output)
+        terminal.addView(
+            scroll,
+            LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f
+            )
+        )
+
+        val input = android.widget.EditText(context)
+        input.setSingleLine(true)
+        input.setTextColor(Color.WHITE)
+        input.hint = "Enter command..."
+        input.setHintTextColor(Color.LTGRAY)
+
+        terminal.addView(
+            input,
+            LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(52)
+            )
+        )
+
+        input.setOnEditorActionListener { _, _, _ ->
+            val cmd = input.text.toString().trim()
+            if (cmd.isNotEmpty()) {
+                output.append("\n${'$'}cmd\n")
+                input.setText("")
+                runLinuxShellCommand(cmd) { result ->
+                    output.append(result)
+                    if (!result.endsWith("\n")) output.append("\n")
+                    output.append("root@debian:~$ ")
+                    scroll.post { scroll.fullScroll(View.FOCUS_DOWN) }
+                }
+            }
+            true
+        }
+
+        return terminal
+    }
+
+    private fun runLinuxShellCommand(command: String, callback: (String) -> Unit) {
+        Thread {
+            val result = try {
+                val full =
+                    "export HOME=/root; export USER=root; export DISPLAY=:100; " +
+                    "export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin; " +
+                    command
+
+                val process = ProcessBuilder(
+                    "su", "-c",
+                    "chroot /data/local/linux/rootfs /bin/bash -lc " + shellQuote(full)
+                ).redirectErrorStream(true).start()
+
+                val out = process.inputStream.bufferedReader().readText()
+                process.waitFor()
+                out
+            } catch (e: Exception) {
+                "ERROR: $e\n"
+            }
+
+            (context as? Activity)?.runOnUiThread { callback(result) }
+        }.start()
     }
 
     private fun shellQuote(

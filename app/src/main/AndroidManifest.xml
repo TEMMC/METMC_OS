@@ -42,11 +42,6 @@
 
     
         <activity
-            android:name=".linux.LinuxDesktopActivity"
-            android:screenOrientation="landscape"
-            android:resizeableActivity="true" />
-
-        <activity
             android:name=".linux.LinuxTerminalActivity"
             android:screenOrientation="landscape"
             android:resizeableActivity="true" />
