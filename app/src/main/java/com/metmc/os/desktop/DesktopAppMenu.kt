@@ -557,20 +557,44 @@ class DesktopAppMenu(
             )
         )
 
+        val inputBar = LinearLayout(context)
+        inputBar.orientation = LinearLayout.HORIZONTAL
+        inputBar.gravity = Gravity.CENTER_VERTICAL
+        inputBar.setPadding(dp(8), dp(6), dp(8), dp(6))
+        inputBar.setBackgroundColor(Color.rgb(25, 27, 33))
+
         val input = android.widget.EditText(context)
         input.setSingleLine(true)
         input.setTextColor(Color.WHITE)
         input.hint = "Enter command..."
         input.setHintTextColor(Color.LTGRAY)
+        input.imeOptions = android.view.inputmethod.EditorInfo.IME_ACTION_GO
+        input.isFocusable = true
+        input.isFocusableInTouchMode = true
+
+        inputBar.addView(
+            input,
+            LinearLayout.LayoutParams(0, dp(52), 1f)
+        )
+
+        val run = Button(context)
+        run.text = "RUN"
+        run.textSize = 12f
+        run.isAllCaps = false
+
+        inputBar.addView(
+            run,
+            LinearLayout.LayoutParams(dp(70), dp(48))
+        )
 
         terminal.addView(
-            input,
+            inputBar,
             LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(52)
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(60)
             )
         )
 
-        input.setOnEditorActionListener { _, _, _ ->
+        val execute: () -> Unit = {
             val cmd = input.text.toString().trim()
             if (cmd.isNotEmpty()) {
                 output.append("\n${'$'}cmd\n")
@@ -582,7 +606,26 @@ class DesktopAppMenu(
                     scroll.post { scroll.fullScroll(View.FOCUS_DOWN) }
                 }
             }
-            true
+        }
+
+        run.setOnClickListener { execute() }
+
+        input.setOnEditorActionListener { _, actionId, event ->
+            if (actionId == android.view.inputmethod.EditorInfo.IME_ACTION_GO ||
+                (event != null && event.keyCode == android.view.KeyEvent.KEYCODE_ENTER)) {
+                execute()
+                true
+            } else {
+                false
+            }
+        }
+
+        terminal.isFocusableInTouchMode = true
+        terminal.post {
+            input.requestFocus()
+            val imm = context.getSystemService(Context.INPUT_METHOD_SERVICE)
+                    as android.view.inputmethod.InputMethodManager
+            imm.showSoftInput(input, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
         }
 
         return terminal
