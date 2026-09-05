@@ -598,7 +598,7 @@ class DesktopAppMenu(
         val execute: () -> Unit = {
             val cmd = input.text.toString().trim()
             if (cmd.isNotEmpty()) {
-                output.append("\n${'$'}cmd\n")
+                output.append("\n$cmd\n")
                 input.setText("")
                 runLinuxShellCommand(cmd) { result ->
                     output.append(result)
@@ -642,7 +642,7 @@ class DesktopAppMenu(
 
                 val process = ProcessBuilder(
                     "su", "-c",
-                    "chroot /data/local/linux/rootfs /bin/bash -lc " + shellQuote(full)
+                    "chroot /data/local/linux/rootfs /bin/bash -c " + shellQuote(full)
                 ).redirectErrorStream(true).start()
 
                 val out = process.inputStream.bufferedReader().readText()
