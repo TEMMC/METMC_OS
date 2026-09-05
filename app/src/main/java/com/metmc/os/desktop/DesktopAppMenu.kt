@@ -536,21 +536,99 @@ class DesktopAppMenu(
 
     private fun buildTerminalView(): View {
 
+        val prompt = "root@debian:~$ "
+
         val terminal = LinearLayout(context)
         terminal.orientation = LinearLayout.VERTICAL
         terminal.setBackgroundColor(Color.rgb(8, 9, 12))
+        terminal.isFocusableInTouchMode = true
 
         val scroll = ScrollView(context)
         scroll.isFillViewport = true
 
-        val output = TextView(context)
-        output.text = "METMC Terminal\nroot@debian:~$ "
-        output.setTextColor(Color.WHITE)
-        output.textSize = 13f
-        output.setPadding(dp(14), dp(12), dp(14), dp(12))
-        output.setTextIsSelectable(true)
+        val console = android.widget.EditText(context)
+        console.setTextColor(Color.rgb(210, 215, 220))
+        console.textSize = 13f
+        console.typeface = android.graphics.Typeface.MONOSPACE
+        console.setPadding(dp(14), dp(12), dp(14), dp(12))
+        console.setBackgroundColor(Color.TRANSPARENT)
+        console.gravity = Gravity.TOP
+        console.setSingleLine(false)
+        console.inputType =
+            android.text.InputType.TYPE_CLASS_TEXT or
+            android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE or
+            android.text.InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
+        console.imeOptions = android.view.inputmethod.EditorInfo.IME_ACTION_NONE
+        console.setHorizontallyScrolling(false)
+        console.isVerticalScrollBarEnabled = false
 
-        scroll.addView(output)
+        console.setText("METMC Terminal\n$prompt")
+        console.setSelection(console.text.length)
+
+        var lockedLength = console.text.length
+
+        fun lastLineStart(): Int {
+            val text = console.text.toString()
+            val idx = text.lastIndexOf('\n')
+            return if (idx == -1) 0 else idx + 1
+        }
+
+        fun runCommand(cmd: String) {
+            runLinuxShellCommand(cmd) { result ->
+                val cleanResult =
+                    if (result.endsWith("\n")) result else result + "\n"
+
+                console.append(cleanResult + prompt)
+                lockedLength = console.text.length
+                console.setSelection(lockedLength)
+                scroll.post { scroll.fullScroll(View.FOCUS_DOWN) }
+            }
+        }
+
+        console.setOnKeyListener { _, keyCode, event ->
+            if (event.action == android.view.KeyEvent.ACTION_DOWN &&
+                keyCode == android.view.KeyEvent.KEYCODE_ENTER) {
+
+                val currentLineStart = lastLineStart()
+                val fullLine = console.text.substring(currentLineStart)
+                val cmd =
+                    if (fullLine.startsWith(prompt))
+                        fullLine.removePrefix(prompt).trim()
+                    else
+                        fullLine.trim()
+
+                console.append("\n")
+                lockedLength = console.text.length
+
+                if (cmd.isNotEmpty()) {
+                    runCommand(cmd)
+                } else {
+                    console.append(prompt)
+                    lockedLength = console.text.length
+                    console.setSelection(lockedLength)
+                }
+
+                true
+            } else {
+                false
+            }
+        }
+
+        // Prevent editing/deleting anything before the current prompt line.
+        console.addTextChangedListener(object : android.text.TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+            override fun afterTextChanged(s: android.text.Editable?) {
+                if (s != null && s.length < lockedLength) {
+                    lockedLength = s.length.coerceAtMost(lockedLength)
+                }
+                if (console.selectionStart < lastLineStart()) {
+                    console.setSelection(console.text.length)
+                }
+            }
+        })
+
+        scroll.addView(console)
         terminal.addView(
             scroll,
             LinearLayout.LayoutParams(
@@ -558,75 +636,12 @@ class DesktopAppMenu(
             )
         )
 
-        val inputBar = LinearLayout(context)
-        inputBar.orientation = LinearLayout.HORIZONTAL
-        inputBar.gravity = Gravity.CENTER_VERTICAL
-        inputBar.setPadding(dp(8), dp(6), dp(8), dp(6))
-        inputBar.setBackgroundColor(Color.rgb(25, 27, 33))
-
-        val input = android.widget.EditText(context)
-        input.setSingleLine(true)
-        input.setTextColor(Color.WHITE)
-        input.hint = "Enter command..."
-        input.setHintTextColor(Color.LTGRAY)
-        input.imeOptions = android.view.inputmethod.EditorInfo.IME_ACTION_GO
-        input.isFocusable = true
-        input.isFocusableInTouchMode = true
-
-        inputBar.addView(
-            input,
-            LinearLayout.LayoutParams(0, dp(52), 1f)
-        )
-
-        val run = Button(context)
-        run.text = "RUN"
-        run.textSize = 12f
-        run.isAllCaps = false
-
-        inputBar.addView(
-            run,
-            LinearLayout.LayoutParams(dp(70), dp(48))
-        )
-
-        terminal.addView(
-            inputBar,
-            LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(60)
-            )
-        )
-
-        val execute: () -> Unit = {
-            val cmd = input.text.toString().trim()
-            if (cmd.isNotEmpty()) {
-                output.append("\n$cmd\n")
-                input.setText("")
-                runLinuxShellCommand(cmd) { result ->
-                    output.append(result)
-                    if (!result.endsWith("\n")) output.append("\n")
-                    output.append("root@debian:~$ ")
-                    scroll.post { scroll.fullScroll(View.FOCUS_DOWN) }
-                }
-            }
-        }
-
-        run.setOnClickListener { execute() }
-
-        input.setOnEditorActionListener { _, actionId, event ->
-            if (actionId == android.view.inputmethod.EditorInfo.IME_ACTION_GO ||
-                (event != null && event.keyCode == android.view.KeyEvent.KEYCODE_ENTER)) {
-                execute()
-                true
-            } else {
-                false
-            }
-        }
-
-        terminal.isFocusableInTouchMode = true
         terminal.post {
-            input.requestFocus()
+            console.requestFocus()
+            console.setSelection(console.text.length)
             val imm = context.getSystemService(Context.INPUT_METHOD_SERVICE)
                     as android.view.inputmethod.InputMethodManager
-            imm.showSoftInput(input, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
+            imm.showSoftInput(console, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
         }
 
         return terminal
