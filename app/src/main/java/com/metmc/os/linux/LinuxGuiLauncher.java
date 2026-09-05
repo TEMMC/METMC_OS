@@ -47,7 +47,7 @@ public final class LinuxGuiLauncher {
                         quote(shell);
 
                 Process process = new ProcessBuilder(
-                        "/system/bin/su",
+                        "su",
                         "-c",
                         chrootCommand
                 )

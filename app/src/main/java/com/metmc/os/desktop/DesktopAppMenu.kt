@@ -204,7 +204,7 @@ class DesktopAppMenu(
                 val process =
                     Runtime.getRuntime().exec(
                         arrayOf(
-                            "/debug_ramdisk/su",
+                            "su",
                             "-c",
                             scanCommand
                         )
