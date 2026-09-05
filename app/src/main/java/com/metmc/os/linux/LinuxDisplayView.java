@@ -36,6 +36,12 @@ public class LinuxDisplayView extends SurfaceView
 
         getHolder().addCallback(this);
 
+        // SurfaceView skips onDraw() by default (WILL_NOT_DRAW is set),
+        // since it expects rendering via its own Surface/thread instead
+        // of the normal View invalidate()/onDraw() pipeline. Without this,
+        // captured frames are correct but never actually get painted.
+        setWillNotDraw(false);
+
         setFocusable(true);
         setFocusableInTouchMode(true);
         requestFocus();
