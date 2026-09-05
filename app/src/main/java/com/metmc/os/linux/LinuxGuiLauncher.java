@@ -37,9 +37,13 @@ public final class LinuxGuiLauncher {
                         "sleep 2; " +
                         "fi; " +
 
-                        // Launch the requested Linux application.
-                        "cd /root; " +
-                        command;
+                        // Ensure a non-root user exists for running GUI apps.
+                        "id metmc >/dev/null 2>&1 || useradd -m -s /bin/bash metmc; " +
+                        "chown -R metmc:metmc /home/metmc 2>/dev/null; " +
+
+                        // Launch the requested Linux application as 'metmc', not root.
+                        "su -s /bin/bash metmc -c " +
+                        quote("export DISPLAY=:100; export HOME=/home/metmc; export USER=metmc; cd /home/metmc; " + command) + ";";
 
                 String chrootCommand =
                         "chroot " + quote(rootfs) +

@@ -157,7 +157,7 @@ public class LinuxDisplayView extends SurfaceView
                 "-f x11grab " +
                 "-draw_mouse 1 " +
                 "-video_size 1280x720 " +
-                "-framerate 30 " +
+                "-framerate 8 " +
                 "-i :100 " +
                 "-pix_fmt rgba " +
                 "-f rawvideo -";
