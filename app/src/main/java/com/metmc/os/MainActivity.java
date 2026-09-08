@@ -1054,6 +1054,35 @@ public class MainActivity extends Activity {
         }
     }
 
+    String resolveDebianRootfsUrl() throws Exception {
+        URL apiUrl = new URL("https://api.github.com/repos/termux/proot-distro/releases/latest");
+        HttpURLConnection conn = (HttpURLConnection) apiUrl.openConnection();
+        conn.setConnectTimeout(15000);
+        conn.setReadTimeout(15000);
+        conn.setRequestProperty("Accept", "application/vnd.github+json");
+        conn.connect();
+
+        InputStream in = new BufferedInputStream(conn.getInputStream());
+        java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
+        byte[] buf = new byte[4096];
+        int n;
+        while ((n = in.read(buf)) != -1) out.write(buf, 0, n);
+        in.close();
+        conn.disconnect();
+
+        String json = out.toString("UTF-8");
+
+        java.util.regex.Matcher m = java.util.regex.Pattern.compile(
+            "\"browser_download_url\":\s*\"([^\"]*debian-aarch64[^\"]*\.tar\.xz)\""
+        ).matcher(json);
+
+        if (m.find()) {
+            return m.group(1);
+        }
+
+        throw new Exception("Could not find a debian-aarch64 rootfs asset in the latest proot-distro release.");
+    }
+
     void startDebianInstall() {
         final ProgressDialog progress = new ProgressDialog(this);
         progress.setTitle("METMC Linux");
@@ -1081,7 +1110,8 @@ public class MainActivity extends Activity {
                     progress.setMessage("Downloading Debian...");
                 });
 
-                downloadFile(DEBIAN_URL, archive, progress);
+                String resolvedUrl = resolveDebianRootfsUrl();
+                downloadFile(resolvedUrl, archive, progress);
 
                 runOnUiThread(() ->
                     progress.setMessage("Extracting Debian..."));
