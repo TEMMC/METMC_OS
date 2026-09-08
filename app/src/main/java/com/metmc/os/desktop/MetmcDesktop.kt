@@ -41,6 +41,7 @@ class MetmcDesktop(
         buildDesktop()
 
         loadSavedWallpaper()
+
     }
 
     private fun buildDesktop() {
