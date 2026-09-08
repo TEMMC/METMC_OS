@@ -1073,7 +1073,7 @@ public class MainActivity extends Activity {
         String json = out.toString("UTF-8");
 
         java.util.regex.Matcher m = java.util.regex.Pattern.compile(
-            "\"browser_download_url\":\s*\"([^\"]*debian-aarch64[^\"]*\.tar\.xz)\""
+            "\"browser_download_url\":\\s*\"([^\"]*debian-aarch64[^\"]*\.tar\.xz)\""
         ).matcher(json);
 
         if (m.find()) {
