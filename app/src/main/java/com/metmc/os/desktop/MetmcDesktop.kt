@@ -388,6 +388,7 @@ class MetmcDesktop(
         )
     }
 
+    @JvmOverloads
     fun applyWallpaper(uri: Uri, save: Boolean = true) {
         if (save) {
             context.getSharedPreferences("metmc_prefs", Context.MODE_PRIVATE)
