@@ -163,6 +163,9 @@ class MetmcDesktop(
                 if (content is com.metmc.os.linux.LinuxDisplayView) {
                     content.stop()
                 }
+                if (content is com.metmc.os.desktop.BrowserView) {
+                    content.destroy()
+                }
                 windows.remove(window)
                 taskbar.removeWindow(window)
             }
