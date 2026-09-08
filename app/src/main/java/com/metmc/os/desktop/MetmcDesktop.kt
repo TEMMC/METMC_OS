@@ -39,6 +39,8 @@ class MetmcDesktop(
     init {
         setBackgroundColor(Color.rgb(10,12,18))
         buildDesktop()
+
+        loadSavedWallpaper()
     }
 
     private fun buildDesktop() {
@@ -382,7 +384,11 @@ class MetmcDesktop(
         )
     }
 
-    fun applyWallpaper(uri: Uri) {
+    fun applyWallpaper(uri: Uri, save: Boolean = true) {
+        if (save) {
+            context.getSharedPreferences("metmc_prefs", Context.MODE_PRIVATE)
+                .edit().putString("wallpaper_uri", uri.toString()).apply()
+        }
 
         wallpaperUri = uri
 
@@ -417,6 +423,19 @@ class MetmcDesktop(
             ).show()
         }
     }
+
+    private fun loadSavedWallpaper() {
+        val saved = context.getSharedPreferences("metmc_prefs", Context.MODE_PRIVATE)
+            .getString("wallpaper_uri", null)
+
+        if (saved != null) {
+            try {
+                applyWallpaper(Uri.parse(saved), save = false)
+            } catch (_: Exception) {
+            }
+        }
+    }
+
 
     private fun dp(value: Int): Int =
         (

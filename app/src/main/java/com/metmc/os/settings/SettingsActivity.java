@@ -156,7 +156,7 @@ public class SettingsActivity extends Activity {
         content.addView(system);
 
         TextView version = text(
-            "METMC OS\nVersion 6.0\n\nAndroid desktop environment",
+            "METMC OS\nVersion 6.0\n\nAndroid desktop environment\n\nMade by Tinotenda Enock Mapfumo (aka Dr TEMMC)",
             14
         );
         version.setTextColor(Color.LTGRAY);

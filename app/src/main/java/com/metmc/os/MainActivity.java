@@ -73,6 +73,8 @@ public class MainActivity extends Activity {
         desktopView = new MetmcDesktop(this);
         setContentView(desktopView);
         tick();
+
+        checkLinuxEnvironmentOnStartup();
     }
 
     @Override
@@ -82,6 +84,14 @@ public class MainActivity extends Activity {
         if (requestCode == 9001 && resultCode == RESULT_OK
                 && data != null && data.getData() != null) {
             desktopView.applyWallpaper(data.getData());
+        }
+    }
+
+    void checkLinuxEnvironmentOnStartup() {
+        File rootfs = new File(METMC_ROOTFS);
+
+        if (!new File(rootfs, "bin/bash").exists()) {
+            handler.postDelayed(this::showLinuxInstaller, 600);
         }
     }
 
