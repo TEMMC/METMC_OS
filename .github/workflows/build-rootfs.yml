@@ -1,0 +1,76 @@
+name: Build METMC Debian Rootfs
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-rootfs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install debootstrap and qemu
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y debootstrap qemu-user-static binfmt-support
+
+      - name: Bootstrap Debian arm64 (stage 1)
+        run: |
+          sudo debootstrap --arch=arm64 --foreign bookworm rootfs http://deb.debian.org/debian
+
+      - name: Copy qemu into rootfs for stage 2
+        run: |
+          sudo cp /usr/bin/qemu-aarch64-static rootfs/usr/bin/
+
+      - name: Bootstrap Debian arm64 (stage 2, inside chroot)
+        run: |
+          sudo chroot rootfs /debootstrap/debootstrap --second-stage
+
+      - name: Configure apt sources
+        run: |
+          sudo tee rootfs/etc/apt/sources.list > /dev/null << 'EOS'
+          deb http://deb.debian.org/debian bookworm main
+          deb http://security.debian.org/debian-security bookworm-security main
+          EOS
+
+      - name: Install METMC OS packages inside chroot
+        run: |
+          sudo chroot rootfs /usr/bin/qemu-aarch64-static /bin/bash -c "
+            export DEBIAN_FRONTEND=noninteractive
+            apt-get update
+            apt-get install -y \
+              openbox xvfb ffmpeg xdotool x11-xserver-utils \
+              xterm htop nano wget curl procps sudo \
+              coreutils bash tar findutils grep sed \
+              ca-certificates locales
+            apt-get clean
+            rm -rf /var/lib/apt/lists/*
+          "
+
+      - name: Set root password and basic config
+        run: |
+          sudo chroot rootfs /usr/bin/qemu-aarch64-static /bin/bash -c "
+            echo 'root:root' | chpasswd
+            echo 'nameserver 1.1.1.1' > /etc/resolv.conf
+            echo 'nameserver 8.8.8.8' >> /etc/resolv.conf
+          "
+
+      - name: Clean up qemu binary and docs to reduce size
+        run: |
+          sudo rm -f rootfs/usr/bin/qemu-aarch64-static
+          sudo rm -rf rootfs/usr/share/doc/* rootfs/usr/share/man/*
+
+      - name: Package rootfs
+        run: |
+          cd rootfs
+          sudo tar -cJf ../metmc-debian-arm64.tar.xz .
+          cd ..
+          ls -lh metmc-debian-arm64.tar.xz
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: rootfs-latest
+          name: METMC Debian Rootfs (arm64)
+          files: metmc-debian-arm64.tar.xz
+          body: "Custom Debian bookworm arm64 rootfs for METMC OS, pre-installed with Xvfb, openbox, ffmpeg, xdotool. Auto-built by GitHub Actions."
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
