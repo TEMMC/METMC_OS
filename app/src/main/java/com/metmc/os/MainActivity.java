@@ -83,6 +83,10 @@ public class MainActivity extends Activity {
 
         if (requestCode == 9001 && resultCode == RESULT_OK
                 && data != null && data.getData() != null) {
+            getContentResolver().takePersistableUriPermission(
+                data.getData(),
+                Intent.FLAG_GRANT_READ_URI_PERMISSION
+            );
             desktopView.applyWallpaper(data.getData());
         }
     }

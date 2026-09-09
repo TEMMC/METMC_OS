@@ -351,6 +351,40 @@ class MetmcDesktop(
             )
         )
 
+        val files = Button(context)
+        files.text = "Files"
+        files.isAllCaps = false
+        files.setTextColor(Color.WHITE)
+
+        box.addView(
+            files,
+            LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                dp(55)
+            )
+        )
+
+        files.setOnClickListener {
+            createWindow("Files", FileManagerView(context))
+        }
+
+        val browser = Button(context)
+        browser.text = "Private Browser"
+        browser.isAllCaps = false
+        browser.setTextColor(Color.WHITE)
+
+        box.addView(
+            browser,
+            LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                dp(55)
+            )
+        )
+
+        browser.setOnClickListener {
+            createWindow("Private Browser", BrowserView(context))
+        }
+
         wallpaper.setOnClickListener {
             chooseWallpaper()
         }
