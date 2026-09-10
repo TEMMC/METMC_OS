@@ -56,7 +56,10 @@ class DesktopWindow(
         createTitleBar()
 
         addView(
-            content,
+            DesktopScrollableContent(
+                context,
+                content
+            ),
             LinearLayout.LayoutParams(
                 LayoutParams.MATCH_PARENT,
                 0,
