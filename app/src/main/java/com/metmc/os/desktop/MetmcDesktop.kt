@@ -176,14 +176,26 @@ class MetmcDesktop(
             dp(360)
         )
 
-        val offset =
-            windows.size * dp(18)
+        val windowWidth = dp(520)
+        val windowHeight = dp(360)
+        val taskbarHeight = dp(58)
+
+        val availableWidth =
+            if (desktopArea.width > 0) desktopArea.width else resources.displayMetrics.widthPixels
+
+        val availableHeight =
+            (if (desktopArea.height > 0) desktopArea.height else resources.displayMetrics.heightPixels) - taskbarHeight
+
+        val maxLeft = (availableWidth - windowWidth).coerceAtLeast(0)
+        val maxTop = (availableHeight - windowHeight).coerceAtLeast(0)
+
+        val cascade = windows.size * dp(28)
 
         params.leftMargin =
-            dp(30) + offset
+            if (maxLeft > 0) (dp(20) + cascade) % (maxLeft + 1) else 0
 
         params.topMargin =
-            dp(30) + offset
+            if (maxTop > 0) (dp(20) + cascade) % (maxTop + 1) else 0
 
         desktopArea.addWindow(
             window,
@@ -369,7 +381,7 @@ class MetmcDesktop(
         }
 
         val browser = Button(context)
-        browser.text = "Private Browser"
+        browser.text = "T3 Private Browser"
         browser.isAllCaps = false
         browser.setTextColor(Color.WHITE)
 
@@ -382,7 +394,7 @@ class MetmcDesktop(
         )
 
         browser.setOnClickListener {
-            createWindow("Private Browser", BrowserView(context))
+            createWindow("T3 Private Browser", BrowserView(context))
         }
 
         wallpaper.setOnClickListener {

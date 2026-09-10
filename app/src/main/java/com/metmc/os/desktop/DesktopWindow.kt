@@ -336,15 +336,14 @@ class DesktopWindow(
 
                 MotionEvent.ACTION_MOVE -> {
 
-                    x =
-                        startX +
-                        event.rawX -
-                        downX
+                    val newX = startX + event.rawX - downX
+                    val newY = startY + event.rawY - downY
 
-                    y =
-                        startY +
-                        event.rawY -
-                        downY
+                    val maxX = (workspace.width - width).toFloat().coerceAtLeast(0f)
+                    val maxY = (workspace.height - height).toFloat().coerceAtLeast(0f)
+
+                    x = newX.coerceIn(0f, maxX)
+                    y = newY.coerceIn(0f, maxY)
 
                     return true
                 }

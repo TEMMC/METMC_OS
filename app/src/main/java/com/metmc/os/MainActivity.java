@@ -993,7 +993,7 @@ public class MainActivity extends Activity {
     static final String METMC_ROOTFS = "/data/local/linux/rootfs";
     static final String METMC_LINUX = "/data/local/linux";
     static final String DEBIAN_URL =
-        "https://github.com/debuerreotype/docker-debian-artifacts/raw/refs/heads/dist-arm64v8/bookworm/rootfs.tar.xz";
+        "https://github.com/TEMMC/METMC_OS/releases/download/rootfs-latest/metmc-debian-arm64.tar.xz";
 
     void linuxPanel() {
         File rootfs = new File(METMC_ROOTFS);
@@ -1114,8 +1114,7 @@ public class MainActivity extends Activity {
                     progress.setMessage("Downloading Debian...");
                 });
 
-                String resolvedUrl = resolveDebianRootfsUrl();
-                downloadFile(resolvedUrl, archive, progress);
+                downloadFile(DEBIAN_URL, archive, progress);
 
                 runOnUiThread(() ->
                     progress.setMessage("Extracting Debian..."));

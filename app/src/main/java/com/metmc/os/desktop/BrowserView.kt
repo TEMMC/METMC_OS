@@ -80,7 +80,7 @@ class BrowserView(private val context: Context) : LinearLayout(context) {
             true
         }
 
-        privacyBadge.text = "\ud83d\udd12 Private"
+        privacyBadge.text = "\ud83d\udd12 T3 Private"
         privacyBadge.setTextColor(Color.rgb(120, 200, 140))
         privacyBadge.textSize = 11f
         privacyBadge.setPadding(dp(8), 0, dp(8), 0)
