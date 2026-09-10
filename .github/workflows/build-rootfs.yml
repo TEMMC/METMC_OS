@@ -3,6 +3,9 @@ name: Build METMC Debian Rootfs
 on:
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build-rootfs:
     runs-on: ubuntu-latest
