@@ -55,7 +55,9 @@ class MetmcDesktop(
             LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT
-            )
+            ).apply {
+                bottomMargin = dp(58) // reserve space for the taskbar -- nothing should render under it
+            }
         )
 
         createDesktopContent()
@@ -183,8 +185,11 @@ class MetmcDesktop(
         val availableWidth =
             if (desktopArea.width > 0) desktopArea.width else resources.displayMetrics.widthPixels
 
+        // desktopArea already excludes the taskbar via its own bottomMargin,
+        // so only subtract taskbarHeight in the pre-layout fallback case.
         val availableHeight =
-            (if (desktopArea.height > 0) desktopArea.height else resources.displayMetrics.heightPixels) - taskbarHeight
+            if (desktopArea.height > 0) desktopArea.height
+            else resources.displayMetrics.heightPixels - taskbarHeight
 
         val maxLeft = (availableWidth - windowWidth).coerceAtLeast(0)
         val maxTop = (availableHeight - windowHeight).coerceAtLeast(0)
