@@ -167,9 +167,57 @@ class DesktopWindow(
             onClose()
         }
 
-        titleBar.setOnTouchListener(
-            DragListener()
-        )
+        titleBar.setOnTouchListener(object : View.OnTouchListener {
+            private var downRawX = 0f
+            private var downRawY = 0f
+            private var startX = 0f
+            private var startY = 0f
+
+            override fun onTouch(
+                v: View?,
+                event: MotionEvent
+            ): Boolean {
+                when (event.actionMasked) {
+                    MotionEvent.ACTION_DOWN -> {
+                        downRawX = event.rawX
+                        downRawY = event.rawY
+                        startX = x
+                        startY = y
+                        bringToFront()
+                        return true
+                    }
+
+                    MotionEvent.ACTION_MOVE -> {
+                        val dx = event.rawX - downRawX
+                        val dy = event.rawY - downRawY
+
+                        x = (startX + dx).coerceIn(
+                            0f,
+                            (workspace.width - width)
+                                .coerceAtLeast(0)
+                                .toFloat()
+                        )
+
+                        y = (startY + dy).coerceIn(
+                            0f,
+                            (workspace.height - height)
+                                .coerceAtLeast(0)
+                                .toFloat()
+                        )
+
+                        return true
+                    }
+
+                    MotionEvent.ACTION_UP,
+                    MotionEvent.ACTION_CANCEL -> {
+                        clampToWorkspace()
+                        return true
+                    }
+                }
+
+                return true
+            }
+        })
 
         return titleBar
     }
