@@ -165,8 +165,6 @@ class MetmcDesktop(
                 if (content is com.metmc.os.linux.LinuxDisplayView) {
                     content.stop()
                 }
-                if (content is com.metmc.os.desktop.BrowserView) {
-                    content.destroy()
                 }
                 windows.remove(window)
                 taskbar.removeWindow(window)
@@ -383,23 +381,6 @@ class MetmcDesktop(
 
         files.setOnClickListener {
             createWindow("Files", FileManagerView(context))
-        }
-
-        val browser = Button(context)
-        browser.text = "T3 Private Browser"
-        browser.isAllCaps = false
-        browser.setTextColor(Color.WHITE)
-
-        box.addView(
-            browser,
-            LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                dp(55)
-            )
-        )
-
-        browser.setOnClickListener {
-            createWindow("T3 Private Browser", BrowserView(context))
         }
 
         wallpaper.setOnClickListener {
