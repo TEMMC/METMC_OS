@@ -236,10 +236,10 @@ class DesktopWindow(
                 params.height
 
             params.width =
-                FrameLayout.LayoutParams.MATCH_PARENT
+                workspace.width.coerceAtLeast(1)
 
             params.height =
-                FrameLayout.LayoutParams.MATCH_PARENT
+                workspace.height.coerceAtLeast(1)
 
             params.leftMargin =
                 0
@@ -344,6 +344,26 @@ class DesktopWindow(
 
                     x = newX.coerceIn(0f, maxX)
                     y = newY.coerceIn(0f, maxY)
+
+                    workspace.post {
+                        val safeMaxX =
+                            (workspace.width - width)
+                                .coerceAtLeast(0)
+
+                        val safeMaxY =
+                            (workspace.height - height)
+                                .coerceAtLeast(0)
+
+                        x = x.coerceIn(
+                            0f,
+                            safeMaxX.toFloat()
+                        )
+
+                        y = y.coerceIn(
+                            0f,
+                            safeMaxY.toFloat()
+                        )
+                    }
 
                     return true
                 }

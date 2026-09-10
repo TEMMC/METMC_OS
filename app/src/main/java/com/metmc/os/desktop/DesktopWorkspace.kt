@@ -10,8 +10,8 @@ class DesktopWorkspace(context: Context) : FrameLayout(context) {
         setBackgroundColor(Color.TRANSPARENT)
         isClickable = true
         isFocusable = true
-        clipChildren = false
-        clipToPadding = false
+        clipChildren = true
+        clipToPadding = true
     }
 
     fun addWindow(
