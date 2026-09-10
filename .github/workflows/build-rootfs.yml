@@ -4,11 +4,12 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   build-rootfs:
     runs-on: ubuntu-latest
+
     steps:
       - name: Install debootstrap and qemu
         run: |
@@ -23,13 +24,13 @@ jobs:
         run: |
           sudo cp /usr/bin/qemu-aarch64-static rootfs/usr/bin/
 
-      - name: Bootstrap Debian arm64 (stage 2, inside chroot)
+      - name: Bootstrap Debian arm64 (stage 2)
         run: |
           sudo chroot rootfs /debootstrap/debootstrap --second-stage
 
       - name: Configure apt sources
         run: |
-          sudo tee rootfs/etc/apt/sources.list > /dev/null << 'EOS'
+          sudo tee rootfs/etc/apt/sources.list > /dev/null <<'EOS'
           deb http://deb.debian.org/debian bookworm main
           deb http://security.debian.org/debian-security bookworm-security main
           EOS
@@ -56,10 +57,11 @@ jobs:
             echo 'nameserver 8.8.8.8' >> /etc/resolv.conf
           "
 
-      - name: Clean up qemu binary and docs to reduce size
+      - name: Clean up rootfs
         run: |
           sudo rm -f rootfs/usr/bin/qemu-aarch64-static
-          sudo rm -rf rootfs/usr/share/doc/* rootfs/usr/share/man/*
+          sudo rm -rf rootfs/usr/share/doc/*
+          sudo rm -rf rootfs/usr/share/man/*
 
       - name: Package rootfs
         run: |
@@ -69,8 +71,8 @@ jobs:
           ls -lh metmc-debian-arm64.tar.xz
 
       - name: Upload METMC Debian Rootfs
-    uses: actions/upload-artifact@v4
-    with:
-      name: metmc-debian-arm64
-      path: metmc-debian-arm64.tar.xz
-      retention-days: 90
+        uses: actions/upload-artifact@v4
+        with:
+          name: metmc-debian-arm64
+          path: metmc-debian-arm64.tar.xz
+          retention-days: 90
