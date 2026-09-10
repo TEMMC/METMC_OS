@@ -68,12 +68,9 @@ jobs:
           cd ..
           ls -lh metmc-debian-arm64.tar.xz
 
-      - name: Publish release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: rootfs-latest
-          name: METMC Debian Rootfs (arm64)
-          files: metmc-debian-arm64.tar.xz
-          body: "Custom Debian bookworm arm64 rootfs for METMC OS, pre-installed with Xvfb, openbox, ffmpeg, xdotool. Auto-built by GitHub Actions."
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Upload METMC Debian Rootfs
+    uses: actions/upload-artifact@v4
+    with:
+      name: metmc-debian-arm64
+      path: metmc-debian-arm64.tar.xz
+      retention-days: 90
