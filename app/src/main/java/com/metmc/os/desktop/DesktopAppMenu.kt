@@ -585,6 +585,31 @@ class DesktopAppMenu(
             }
         }
 
+        fun executeMetInstall(cmd: String): Boolean {
+            if (!cmd.startsWith("met install ")) return false
+
+            val path = cmd.removePrefix("met install ").trim()
+            val file = java.io.File(path)
+
+            if (file.exists()) {
+                console.append("Installing ${file.name}...\n")
+                (context as? Activity)?.let { activity ->
+                    com.metmc.os.met.MetInstaller.install(activity, file) { _, message ->
+                        console.append("$message\n$prompt")
+                        lockedLength = console.text.length
+                        console.setSelection(lockedLength)
+                        scroll.post { scroll.fullScroll(View.FOCUS_DOWN) }
+                    }
+                }
+            } else {
+                console.append("File not found: $path\n$prompt")
+                lockedLength = console.text.length
+                console.setSelection(lockedLength)
+            }
+
+            return true
+        }
+
         console.setOnKeyListener { _, keyCode, event ->
             if (event.action == android.view.KeyEvent.ACTION_DOWN &&
                 keyCode == android.view.KeyEvent.KEYCODE_ENTER) {
@@ -601,7 +626,9 @@ class DesktopAppMenu(
                 lockedLength = console.text.length
 
                 if (cmd.isNotEmpty()) {
-                    runCommand(cmd)
+                    if (!executeMetInstall(cmd)) {
+                        runCommand(cmd)
+                    }
                 } else {
                     console.append(prompt)
                     lockedLength = console.text.length
