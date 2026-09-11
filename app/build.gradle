@@ -11,10 +11,22 @@ android {
         applicationId 'com.metmc.os'
         minSdk 23
         targetSdk 35
-        versionCode 6
-        versionName '6.0'
+        versionCode (project.findProperty("METMC_VERSION_CODE") ?: "7").toInteger()
+        versionName project.findProperty("METMC_VERSION_NAME") ?: "7.0"
 
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
+    }
+
+    signingConfigs {
+        release {
+            def ks = System.getenv("METMC_KEYSTORE_FILE")
+            if (ks) {
+                storeFile file(ks)
+                storePassword System.getenv("METMC_STORE_PASSWORD")
+                keyAlias System.getenv("METMC_KEY_ALIAS")
+                keyPassword System.getenv("METMC_KEY_PASSWORD")
+            }
+        }
     }
 
     buildTypes {
@@ -25,6 +37,7 @@ android {
 
         release {
             minifyEnabled false
+            signingConfig signingConfigs.release
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }

@@ -1,6 +1,7 @@
 package com.metmc.os.desktop
 
 import com.metmc.os.R
+import com.metmc.os.update.MetmcUpdater
 
 import android.app.Activity
 import android.content.Context
@@ -380,6 +381,28 @@ class MetmcDesktop(
 
         files.setOnClickListener {
             createWindow("Files", FileManagerView(context))
+        }
+
+        val updates = Button(context)
+        updates.text = "Check for Updates"
+        updates.isAllCaps = false
+        updates.setTextColor(Color.WHITE)
+
+        box.addView(
+            updates,
+            LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                dp(55)
+            )
+        )
+
+        updates.setOnClickListener {
+            if (activity != null) {
+                MetmcUpdater.checkForUpdate(
+                    activity,
+                    true
+                )
+            }
         }
 
         wallpaper.setOnClickListener {

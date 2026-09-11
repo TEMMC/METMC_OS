@@ -1,6 +1,7 @@
 package com.metmc.os;
 
 import com.metmc.os.lock.MetmcLockScreen;
+import com.metmc.os.update.MetmcUpdater;
 
 import com.metmc.os.linux.LinuxGuiEnvironment;
 import com.metmc.os.linux.LinuxGuiLauncher;
@@ -78,7 +79,17 @@ public class MainActivity extends Activity {
         desktopView = new MetmcDesktop(this);
         setContentView(desktopView);
 
-        showMetmcLockScreen();        tick();
+        showMetmcLockScreen();
+        tick();
+
+        // Check silently for a newer official METMC OS release.
+        handler.postDelayed(
+            () -> MetmcUpdater.checkForUpdate(
+                this,
+                false
+            ),
+            2500
+        );
 
         checkLinuxEnvironmentOnStartup();
     }
