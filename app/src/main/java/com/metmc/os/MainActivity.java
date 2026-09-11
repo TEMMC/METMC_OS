@@ -81,17 +81,6 @@ public class MainActivity extends Activity {
 
         showMetmcLockScreen();
         tick();
-
-        // Check silently for a newer official METMC OS release.
-        handler.postDelayed(
-            () -> MetmcUpdater.checkForUpdate(
-                this,
-                false
-            ),
-            2500
-        );
-
-        checkLinuxEnvironmentOnStartup();
     }
 
     @Override
@@ -108,10 +97,21 @@ public class MainActivity extends Activity {
         }
     }
 
-    void checkLinuxEnvironmentOnStartup() {
+    boolean isValidDebianRootfs() {
         File rootfs = new File(METMC_ROOTFS);
 
-        if (!new File(rootfs, "bin/bash").exists()) {
+        return rootfs.isDirectory()
+                && new File(rootfs, "bin/bash").isFile()
+                && new File(
+                    rootfs,
+                    "usr/lib/ld-linux-aarch64.so.1"
+                ).isFile()
+                && new File(rootfs, "etc/os-release").isFile()
+                && new File(rootfs, "usr").isDirectory();
+    }
+
+    void checkLinuxEnvironmentOnStartup() {
+        if (!isValidDebianRootfs()) {
             handler.postDelayed(this::showLinuxInstaller, 600);
         }
     }
@@ -1014,11 +1014,15 @@ public class MainActivity extends Activity {
             "https://cloudfront.debian.net/cdimage/cloud/bookworm/latest/debian-12-generic-arm64.tar.xz";
 
     void linuxPanel() {
-        File rootfs = new File(METMC_ROOTFS);
-        if (!new File(rootfs, "bin/bash").exists()) {
+        /*
+         * Use the same complete Debian validation used after unlock.
+         * A partial rootfs must never be treated as an installed system.
+         */
+        if (!isValidDebianRootfs()) {
             showLinuxInstaller();
             return;
         }
+
         showLinuxControl();
     }
 
@@ -1080,7 +1084,7 @@ public class MainActivity extends Activity {
     void startDebianInstall() {
         final ProgressDialog progress = new ProgressDialog(this);
         progress.setTitle("METMC Linux");
-        progress.setMessage("Preparing Debian...");
+        progress.setMessage("Checking Debian installation...");
         progress.setProgressStyle(ProgressDialog.STYLE_HORIZONTAL);
         progress.setIndeterminate(true);
         progress.setCancelable(false);
@@ -1090,146 +1094,330 @@ public class MainActivity extends Activity {
             String result;
 
             try {
-                File base = new File(METMC_LINUX);
-                File archive = new File(
-                        base,
+                /*
+                 * IMPORTANT:
+                 * Never download the archive directly into
+                 * /data/local/linux from the Android app process.
+                 *
+                 * The app UID can write to its own cache directory;
+                 * root performs the privileged copy/extraction later.
+                 */
+                final File archive = new File(
+                        getCacheDir(),
                         "debian-bookworm-arm64.tar.xz"
                 );
 
-                String tempRoot =
+                final String tempRoot =
                         METMC_LINUX + "/debian-rootfs-new";
-                String backupRoot =
+
+                final String backupRoot =
                         METMC_LINUX + "/debian-rootfs-backup";
 
+                final String rootArchive =
+                        METMC_LINUX +
+                        "/debian-bookworm-arm64.tar.xz";
+
+                /*
+                 * FIRST: check for an existing valid Debian rootfs.
+                 * Do not download or overwrite an already-working
+                 * installation.
+                 */
+                if (isValidDebianRootfs()) {
+                    result =
+                            "Existing Debian ARM64 rootfs detected.\n\n" +
+                            "METMC OS will keep the existing installation.";
+
+                    runOnUiThread(() -> {
+                        progress.dismiss();
+
+                        new AlertDialog.Builder(this)
+                                .setTitle("Debian Already Installed")
+                                .setMessage(
+                                    "A valid Debian ARM64 rootfs " +
+                                    "already exists at:\n\n" +
+                                    METMC_ROOTFS +
+                                    "\n\nNo files were replaced."
+                                )
+                                .setPositiveButton(
+                                    "Open Linux",
+                                    (d, w) -> showLinuxControl()
+                                )
+                                .setNegativeButton("Close", null)
+                                .show();
+                    });
+
+                    return;
+                }
+
+                /*
+                 * Make sure the privileged destination exists.
+                 */
                 runRoot(
-                        "mkdir -p " +
+                        "set -e; mkdir -p " +
                         shellQuote(METMC_LINUX)
                 );
+
+                /*
+                 * Remove only stale temporary installer files.
+                 * The active rootfs is untouched.
+                 */
+                runRoot(
+                        "set -e; " +
+                        "rm -rf " + shellQuote(tempRoot) + "; " +
+                        "rm -f " + shellQuote(rootArchive)
+                );
+
+                /*
+                 * Download into Android's private cache.
+                 */
+                if (archive.exists()) {
+                    archive.delete();
+                }
 
                 runOnUiThread(() -> {
                     progress.setIndeterminate(false);
                     progress.setProgress(0);
-                    progress.setMessage("Downloading Debian 12...");
+                    progress.setMessage(
+                        "Downloading Debian 12..."
+                    );
                 });
 
-                downloadFile(DEBIAN_URL, archive, progress);
+                downloadFile(
+                        DEBIAN_URL,
+                        archive,
+                        progress
+                );
+
+                if (!archive.isFile() || archive.length() < 1024) {
+                    throw new IOException(
+                        "Debian download is missing or incomplete."
+                    );
+                }
 
                 runOnUiThread(() ->
-                        progress.setMessage("Extracting Debian..."));
+                        progress.setMessage(
+                            "Preparing Debian archive..."
+                        ));
 
                 /*
-                 * Never extract directly into the active rootfs.
-                 * Build and verify the new rootfs first.
+                 * Give the root shell the downloaded archive.
+                 * Root performs this operation, not the app UID.
+                 */
+                runRoot(
+                        "set -e; " +
+                        "cp " +
+                        shellQuote(archive.getAbsolutePath()) +
+                        " " +
+                        shellQuote(rootArchive) +
+                        "; " +
+                        "chmod 600 " +
+                        shellQuote(rootArchive) +
+                        "; " +
+                        "test -s " +
+                        shellQuote(rootArchive)
+                );
+
+                runOnUiThread(() ->
+                        progress.setMessage(
+                            "Extracting Debian..."
+                        ));
+
+                /*
+                 * Build the new rootfs separately.
+                 * The existing rootfs remains untouched until
+                 * all verification succeeds.
                  */
                 runRoot(
                         "set -e; " +
                         "rm -rf " + shellQuote(tempRoot) + "; " +
                         "mkdir -p " + shellQuote(tempRoot) + "; " +
-                        "tar -xJf " + shellQuote(archive.getAbsolutePath()) +
-                        " -C " + shellQuote(tempRoot) + "; " +
+
+                        "tar -xJf " +
+                        shellQuote(rootArchive) +
+                        " -C " +
+                        shellQuote(tempRoot) +
+                        "; " +
 
                         /*
-                         * Debian cloud archives normally contain the
-                         * filesystem directly. Handle a single
-                         * rootfs/ wrapper defensively.
+                         * Handle a possible single rootfs/ wrapper.
                          */
-                        "if [ -d " + shellQuote(tempRoot + "/rootfs") +
+                        "if [ -d " +
+                        shellQuote(tempRoot + "/rootfs") +
                         " ] && [ ! -x " +
                         shellQuote(tempRoot + "/bin/bash") +
                         " ]; then " +
-                        "mv " + shellQuote(tempRoot + "/rootfs") +
-                        "/* " + shellQuote(tempRoot) + "/; " +
-                        "mv " + shellQuote(tempRoot + "/rootfs") +
-                        "/.[!.]* " + shellQuote(tempRoot) +
-                        "/ 2>/dev/null || true; " +
-                        "rm -rf " + shellQuote(tempRoot + "/rootfs") +
+
+                        "cp -a " +
+                        shellQuote(tempRoot + "/rootfs") +
+                        "/. " +
+                        shellQuote(tempRoot) +
+                        "/; " +
+
+                        "rm -rf " +
+                        shellQuote(tempRoot + "/rootfs") +
                         "; " +
+
                         "fi; " +
 
                         /*
-                         * Verify before replacing the active installation.
+                         * Verify the extracted Debian rootfs.
                          */
                         "test -x " +
-                        shellQuote(tempRoot + "/bin/bash") + "; " +
-                        "test -x " +
-                        shellQuote(tempRoot +
-                                "/usr/lib/ld-linux-aarch64.so.1") + "; " +
-                        "test -d " +
-                        shellQuote(tempRoot + "/etc") + "; " +
+                        shellQuote(tempRoot + "/bin/bash") +
+                        "; " +
+
+                        "test -f " +
+                        shellQuote(
+                            tempRoot +
+                            "/usr/lib/ld-linux-aarch64.so.1"
+                        ) +
+                        "; " +
+
+                        "test -f " +
+                        shellQuote(tempRoot + "/etc/os-release") +
+                        "; " +
+
                         "test -d " +
                         shellQuote(tempRoot + "/usr")
                 );
 
                 runOnUiThread(() ->
-                        progress.setMessage("Activating Debian..."));
+                        progress.setMessage(
+                            "Activating Debian..."
+                        ));
 
                 runRoot(
                         "set -e; " +
 
-                        "rm -rf " + shellQuote(backupRoot) + "; " +
+                        /*
+                         * Preserve an existing installation until
+                         * the new one has passed extraction checks.
+                         */
+                        "rm -rf " +
+                        shellQuote(backupRoot) +
+                        "; " +
 
-                        "if [ -d " + shellQuote(METMC_ROOTFS) +
+                        "if [ -d " +
+                        shellQuote(METMC_ROOTFS) +
                         " ]; then " +
-                        "mv " + shellQuote(METMC_ROOTFS) +
-                        " " + shellQuote(backupRoot) + "; " +
+
+                        "mv " +
+                        shellQuote(METMC_ROOTFS) +
+                        " " +
+                        shellQuote(backupRoot) +
+                        "; " +
+
                         "fi; " +
 
-                        "mv " + shellQuote(tempRoot) +
-                        " " + shellQuote(METMC_ROOTFS) + "; " +
+                        "mv " +
+                        shellQuote(tempRoot) +
+                        " " +
+                        shellQuote(METMC_ROOTFS) +
+                        "; " +
 
                         "mkdir -p " +
-                        shellQuote(METMC_ROOTFS + "/proc") + " " +
-                        shellQuote(METMC_ROOTFS + "/sys") + " " +
-                        shellQuote(METMC_ROOTFS + "/dev") + " " +
-                        shellQuote(METMC_ROOTFS + "/tmp") + " " +
-                        shellQuote(METMC_ROOTFS + "/run") + "; " +
+                        shellQuote(METMC_ROOTFS + "/proc") +
+                        " " +
+                        shellQuote(METMC_ROOTFS + "/sys") +
+                        " " +
+                        shellQuote(METMC_ROOTFS + "/dev") +
+                        " " +
+                        shellQuote(METMC_ROOTFS + "/tmp") +
+                        " " +
+                        shellQuote(METMC_ROOTFS + "/run") +
+                        "; " +
 
                         "chmod 1777 " +
-                        shellQuote(METMC_ROOTFS + "/tmp") + "; " +
+                        shellQuote(METMC_ROOTFS + "/tmp") +
+                        "; " +
 
                         "printf '%s\\n' " +
                         "'nameserver 1.1.1.1' " +
                         "'nameserver 8.8.8.8' > " +
-                        shellQuote(METMC_ROOTFS + "/etc/resolv.conf") + "; " +
+                        shellQuote(
+                            METMC_ROOTFS +
+                            "/etc/resolv.conf"
+                        ) +
+                        "; " +
 
-                        /*
-                         * Verify the active installation once more.
-                         */
                         "test -x " +
-                        shellQuote(METMC_ROOTFS + "/bin/bash") + "; " +
+                        shellQuote(
+                            METMC_ROOTFS +
+                            "/bin/bash"
+                        ) +
+                        "; " +
 
                         /*
-                         * Only remove the old installation after the
-                         * new one has successfully become active.
+                         * New rootfs is active and verified.
                          */
-                        "rm -rf " + shellQuote(backupRoot) + "; " +
-                        "rm -f " + shellQuote(archive.getAbsolutePath())
+                        "rm -rf " +
+                        shellQuote(backupRoot) +
+                        "; " +
+
+                        "rm -f " +
+                        shellQuote(rootArchive)
                 );
 
+                /*
+                 * Verify the final installation from chroot.
+                 */
                 runOnUiThread(() ->
-                        progress.setMessage("Verifying Debian..."));
+                        progress.setMessage(
+                            "Verifying Debian..."
+                        ));
 
                 result = runRoot(
+                        "set -e; " +
+
                         "test -x " +
-                        shellQuote(METMC_ROOTFS + "/bin/bash") +
-                        " && test -x " +
                         shellQuote(
-                                METMC_ROOTFS +
-                                "/usr/lib/ld-linux-aarch64.so.1"
+                            METMC_ROOTFS +
+                            "/bin/bash"
+                        ) +
+                        " && test -f " +
+                        shellQuote(
+                            METMC_ROOTFS +
+                            "/usr/lib/ld-linux-aarch64.so.1"
                         ) +
                         " && chroot " +
                         shellQuote(METMC_ROOTFS) +
                         " /bin/bash -lc " +
                         shellQuote(
-                                "echo 'METMC Linux ready'; " +
-                                "cat /etc/os-release | " +
-                                "grep PRETTY_NAME; " +
-                                "uname -m"
+                            "echo 'METMC Linux ready'; " +
+                            "cat /etc/os-release | " +
+                            "grep PRETTY_NAME; " +
+                            "uname -m"
                         )
                 );
 
+                /*
+                 * The archive is temporary. Keep only the installed
+                 * rootfs.
+                 */
+                archive.delete();
+
             } catch (Exception e) {
                 result = "Installation failed:\n" + e;
+
+                /*
+                 * Clean installer-only files. Do not destroy an
+                 * existing valid rootfs on failure.
+                 */
+                try {
+                    runRoot(
+                        "rm -rf " +
+                        shellQuote(
+                            METMC_LINUX +
+                            "/debian-rootfs-new"
+                        ) +
+                        "; rm -f " +
+                        shellQuote(
+                            METMC_LINUX +
+                            "/debian-bookworm-arm64.tar.xz"
+                        )
+                    );
+                } catch (Exception ignored) {
+                }
             }
 
             final String finalResult = result;
@@ -1237,28 +1425,26 @@ public class MainActivity extends Activity {
             runOnUiThread(() -> {
                 progress.dismiss();
 
-                if (new File(
-                        METMC_ROOTFS + "/bin/bash"
-                ).exists()) {
+                if (isValidDebianRootfs()) {
                     new AlertDialog.Builder(this)
                             .setTitle("Debian Ready")
                             .setMessage(
-                                    "METMC Linux has been installed.\n\n" +
-                                    finalResult
+                                "METMC Linux is installed.\n\n" +
+                                finalResult
                             )
                             .setPositiveButton(
-                                    "Open Linux",
-                                    (d, w) -> showLinuxControl()
+                                "Open Linux",
+                                (d, w) -> showLinuxControl()
                             )
                             .show();
                 } else {
                     panel(
-                            "Debian Installation Failed",
-                            finalResult
+                        "Debian Installation Failed",
+                        finalResult
                     );
                 }
             });
-        }, "METMC-Debian-Install").start();
+        }).start();
     }
 
     void runLinuxCommand(
@@ -1792,6 +1978,18 @@ public class MainActivity extends Activity {
                     if (desktopView != null) {
                         desktopView.setVisibility(View.VISIBLE);
                     }
+
+                    // Nothing that opens a desktop dialog runs
+                    // until the user has unlocked METMC OS.
+                    checkLinuxEnvironmentOnStartup();
+
+                    handler.postDelayed(
+                        () -> MetmcUpdater.checkForUpdate(
+                            this,
+                            false
+                        ),
+                        500
+                    );
                 }
         );
 

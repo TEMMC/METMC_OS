@@ -3,12 +3,15 @@ package com.metmc.os.lock
 import android.content.Context
 import android.graphics.Color
 import android.graphics.Typeface
-import android.os.Handler
-import android.os.Looper
+import android.graphics.drawable.GradientDrawable
+import android.text.InputType
 import android.view.Gravity
+import android.view.KeyEvent
 import android.view.View
-import android.view.ViewGroup
+import android.view.inputmethod.EditorInfo
+import android.view.inputmethod.InputMethodManager
 import android.widget.Button
+import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -22,428 +25,323 @@ class MetmcLockScreen(
     private val onUnlocked: Runnable
 ) : FrameLayout(context) {
 
-    private val handler = Handler(Looper.getMainLooper())
+    private val backgroundColor = Color.rgb(9, 11, 15)
+    private val panelColor = Color.rgb(22, 25, 32)
+    private val fieldColor = Color.rgb(31, 35, 44)
+    private val textColor = Color.WHITE
+    private val secondaryColor = Color.rgb(170, 177, 190)
+    private val accentColor = Color.rgb(70, 135, 255)
 
+    private lateinit var pinInput: EditText
+    private lateinit var status: TextView
     private lateinit var clock: TextView
     private lateinit var date: TextView
-    private lateinit var pinDisplay: TextView
 
-    private var enteredPin = ""
-
-    private val clockRunnable = object : Runnable {
+    private val clockUpdater = object : Runnable {
         override fun run() {
-            updateClock()
-            handler.postDelayed(this, 1000)
+            updateDateTime()
+            postDelayed(this, 1000)
         }
     }
 
     init {
-        setBackgroundColor(Color.rgb(7, 10, 20))
-        isClickable = true
+        setBackgroundColor(backgroundColor)
         isFocusable = true
+        isFocusableInTouchMode = true
 
-        buildInterface()
+        buildUi()
 
-        handler.post(clockRunnable)
+        post {
+            requestFocus()
+            pinInput.requestFocus()
+
+            val imm = context.getSystemService(
+                Context.INPUT_METHOD_SERVICE
+            ) as? InputMethodManager
+
+            imm?.showSoftInput(
+                pinInput,
+                InputMethodManager.SHOW_IMPLICIT
+            )
+        }
+
+        post(clockUpdater)
     }
 
-    private fun dp(value: Int): Int =
-        (value * resources.displayMetrics.density).toInt()
-
-    private fun text(
-        value: String,
-        size: Float,
-        color: Int = Color.WHITE,
-        bold: Boolean = false
-    ): TextView {
-        return TextView(context).apply {
-            this.text = value
-            textSize = size
-            setTextColor(color)
-            gravity = Gravity.CENTER
-
-            if (bold) {
-                typeface = Typeface.create(
-                    Typeface.DEFAULT,
-                    Typeface.BOLD
-                )
-            }
-        }
-    }
-
-    private fun buildInterface() {
-
-        /*
-         * Background layer
-         */
-        val background = LinearLayout(context).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER
-            setPadding(dp(24), dp(24), dp(24), dp(24))
-            setBackgroundColor(Color.rgb(7, 10, 20))
-        }
+    private fun buildUi() {
+        val root = LinearLayout(context)
+        root.orientation = LinearLayout.VERTICAL
+        root.gravity = Gravity.CENTER_HORIZONTAL
+        root.setPadding(dp(32), dp(28), dp(32), dp(28))
 
         addView(
-            background,
+            root,
             LayoutParams(
                 LayoutParams.MATCH_PARENT,
                 LayoutParams.MATCH_PARENT
             )
         )
 
-        /*
-         * METMC branding
-         */
-        val brand = text(
-            "METMC",
-            18f,
-            Color.rgb(170, 190, 255),
-            true
+        clock = TextView(context)
+        clock.setTextColor(textColor)
+        clock.textSize = 52f
+        clock.typeface = Typeface.create(
+            Typeface.DEFAULT,
+            Typeface.NORMAL
         )
+        clock.gravity = Gravity.CENTER
 
-        background.addView(
-            brand,
-            LinearLayout.LayoutParams(
-                LayoutParams.MATCH_PARENT,
-                dp(35)
-            )
-        )
-
-        val subtitle = text(
-            "PRIVATE SYSTEM",
-            10f,
-            Color.rgb(125, 140, 170),
-            true
-        )
-
-        background.addView(
-            subtitle,
-            LinearLayout.LayoutParams(
-                LayoutParams.MATCH_PARENT,
-                dp(24)
-            )
-        )
-
-        /*
-         * Clock
-         */
-        clock = text(
-            "--:--",
-            64f,
-            Color.WHITE,
-            true
-        )
-
-        clock.setPadding(0, dp(16), 0, 0)
-
-        background.addView(
+        root.addView(
             clock,
             LinearLayout.LayoutParams(
                 LayoutParams.MATCH_PARENT,
-                dp(90)
+                dp(70)
             )
         )
 
-        date = text(
-            "",
-            16f,
-            Color.rgb(180, 190, 215)
+        date = TextView(context)
+        date.setTextColor(secondaryColor)
+        date.textSize = 17f
+        date.gravity = Gravity.CENTER
+
+        root.addView(
+            date,
+            LinearLayout.LayoutParams(
+                LayoutParams.MATCH_PARENT,
+                dp(42)
+            )
         )
 
-        background.addView(
-            date,
+        val spacer = View(context)
+        root.addView(
+            spacer,
+            LinearLayout.LayoutParams(
+                1,
+                0,
+                1f
+            )
+        )
+
+        val card = LinearLayout(context)
+        card.orientation = LinearLayout.VERTICAL
+        card.gravity = Gravity.CENTER_HORIZONTAL
+        card.setPadding(dp(30), dp(28), dp(30), dp(30))
+        card.background = rounded(panelColor, dp(22))
+
+        val cardParams = LinearLayout.LayoutParams(
+            dp(430),
+            LayoutParams.WRAP_CONTENT
+        )
+
+        root.addView(card, cardParams)
+
+        val logo = TextView(context)
+        logo.text = "METMC OS"
+        logo.setTextColor(textColor)
+        logo.textSize = 28f
+        logo.typeface = Typeface.DEFAULT_BOLD
+        logo.gravity = Gravity.CENTER
+
+        card.addView(
+            logo,
+            LinearLayout.LayoutParams(
+                LayoutParams.MATCH_PARENT,
+                dp(48)
+            )
+        )
+
+        val subtitle = TextView(context)
+        subtitle.text = "Welcome back"
+        subtitle.setTextColor(secondaryColor)
+        subtitle.textSize = 16f
+        subtitle.gravity = Gravity.CENTER
+
+        card.addView(
+            subtitle,
             LinearLayout.LayoutParams(
                 LayoutParams.MATCH_PARENT,
                 dp(35)
             )
         )
 
-        /*
-         * Profile card
-         */
-        val profile = LinearLayout(context).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER
-            setPadding(
-                dp(25),
-                dp(22),
-                dp(25),
-                dp(22)
-            )
+        val user = TextView(context)
+        user.text = "Dr TEMMC"
+        user.setTextColor(textColor)
+        user.textSize = 18f
+        user.typeface = Typeface.DEFAULT_BOLD
+        user.gravity = Gravity.CENTER
 
-            setBackgroundColor(
-                Color.rgb(20, 25, 42)
-            )
-        }
-
-        val profileParams =
+        card.addView(
+            user,
             LinearLayout.LayoutParams(
-                dp(340),
-                LayoutParams.WRAP_CONTENT
+                LayoutParams.MATCH_PARENT,
+                dp(42)
             )
-
-        profileParams.gravity = Gravity.CENTER
-        profileParams.topMargin = dp(20)
-
-        background.addView(profile, profileParams)
-
-        /*
-         * Profile circle
-         */
-        val avatar = text(
-            "T",
-            34f,
-            Color.WHITE,
-            true
         )
 
-        avatar.setBackgroundColor(
-            Color.rgb(70, 90, 160)
-        )
+        pinInput = EditText(context)
+        pinInput.inputType =
+            InputType.TYPE_CLASS_NUMBER or
+            InputType.TYPE_NUMBER_VARIATION_PASSWORD
 
-        profile.addView(
-            avatar,
+        pinInput.imeOptions = EditorInfo.IME_ACTION_DONE
+        pinInput.singleLine = true
+        pinInput.hint = "PIN"
+        pinInput.setTextColor(textColor)
+        pinInput.setHintTextColor(secondaryColor)
+        pinInput.textSize = 20f
+        pinInput.gravity = Gravity.CENTER
+        pinInput.setPadding(dp(16), 0, dp(16), 0)
+        pinInput.background = rounded(fieldColor, dp(12))
+
+        card.addView(
+            pinInput,
             LinearLayout.LayoutParams(
-                dp(82),
-                dp(82)
+                LayoutParams.MATCH_PARENT,
+                dp(58)
             ).apply {
-                gravity = Gravity.CENTER
+                topMargin = dp(18)
             }
         )
 
-        val username = text(
-            "TEMMC",
-            22f,
-            Color.WHITE,
-            true
+        val unlock = Button(context)
+        unlock.text = "Unlock"
+        unlock.isAllCaps = false
+        unlock.textSize = 17f
+        unlock.setTextColor(Color.WHITE)
+        unlock.background = rounded(accentColor, dp(12))
+
+        card.addView(
+            unlock,
+            LinearLayout.LayoutParams(
+                LayoutParams.MATCH_PARENT,
+                dp(54)
+            ).apply {
+                topMargin = dp(14)
+            }
         )
 
-        username.setPadding(0, dp(14), 0, 0)
+        status = TextView(context)
+        status.setTextColor(secondaryColor)
+        status.textSize = 14f
+        status.gravity = Gravity.CENTER
+        status.text = "Enter your PIN to continue"
 
-        profile.addView(
-            username,
+        card.addView(
+            status,
+            LinearLayout.LayoutParams(
+                LayoutParams.MATCH_PARENT,
+                dp(42)
+            )
+        )
+
+        val footer = TextView(context)
+        footer.text =
+            "METMC OS powered by Tinotenda Enock Mapfumo aka Dr TEMMC"
+        footer.setTextColor(Color.rgb(110, 116, 128))
+        footer.textSize = 11f
+        footer.gravity = Gravity.CENTER
+        footer.setPadding(dp(4), dp(8), dp(4), 0)
+
+        card.addView(
+            footer,
             LinearLayout.LayoutParams(
                 LayoutParams.MATCH_PARENT,
                 dp(45)
             )
         )
 
-        val role = text(
-            "METMC OS Administrator",
-            12f,
-            Color.rgb(145, 155, 180)
-        )
-
-        profile.addView(
-            role,
-            LinearLayout.LayoutParams(
-                LayoutParams.MATCH_PARENT,
-                dp(30)
-            )
-        )
-
-        /*
-         * PIN display
-         */
-        pinDisplay = text(
-            "Enter PIN",
-            15f,
-            Color.rgb(170, 180, 205)
-        )
-
-        pinDisplay.setPadding(0, dp(15), 0, dp(5))
-
-        profile.addView(
-            pinDisplay,
-            LinearLayout.LayoutParams(
-                LayoutParams.MATCH_PARENT,
-                dp(40)
-            )
-        )
-
-        /*
-         * Keypad
-         */
-        val keypad = LinearLayout(context).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER
+        unlock.setOnClickListener {
+            attemptUnlock()
         }
 
-        profile.addView(
-            keypad,
-            LinearLayout.LayoutParams(
-                LayoutParams.MATCH_PARENT,
-                LayoutParams.WRAP_CONTENT
-            )
-        )
-
-        val numbers = arrayOf(
-            arrayOf("1", "2", "3"),
-            arrayOf("4", "5", "6"),
-            arrayOf("7", "8", "9"),
-            arrayOf("⌫", "0", "✓")
-        )
-
-        for (row in numbers) {
-
-            val rowLayout = LinearLayout(context).apply {
-                orientation = LinearLayout.HORIZONTAL
-                gravity = Gravity.CENTER
-            }
-
-            keypad.addView(
-                rowLayout,
-                LinearLayout.LayoutParams(
-                    LayoutParams.MATCH_PARENT,
-                    dp(58)
-                )
-            )
-
-            for (value in row) {
-
-                val button = Button(context).apply {
-
-                    text = value
-                    textSize = 17f
-                    setTextColor(Color.WHITE)
-
-                    setBackgroundColor(
-                        Color.rgb(30, 37, 60)
-                    )
-
-                    setOnClickListener {
-                        handleKey(value)
-                    }
-                }
-
-                rowLayout.addView(
-                    button,
-                    LinearLayout.LayoutParams(
-                        dp(78),
-                        dp(48)
-                    ).apply {
-                        gravity = Gravity.CENTER
-                        setMargins(
-                            dp(4),
-                            dp(4),
-                            dp(4),
-                            dp(4)
-                        )
-                    }
-                )
-            }
-        }
-
-        /*
-         * Footer
-         */
-        val footer = text(
-            "METMC OS  •  Secure Session",
-            10f,
-            Color.rgb(105, 115, 140)
-        )
-
-        background.addView(
-            footer,
-            LinearLayout.LayoutParams(
-                LayoutParams.MATCH_PARENT,
-                dp(35)
-            ).apply {
-                topMargin = dp(12)
-            }
-        )
-    }
-
-    private fun handleKey(key: String) {
-
-        when (key) {
-
-            "⌫" -> {
-                if (enteredPin.isNotEmpty()) {
-                    enteredPin =
-                        enteredPin.dropLast(1)
-                    updatePinDisplay()
-                }
-            }
-
-            "✓" -> {
-                verifyPin()
-            }
-
-            else -> {
-                if (enteredPin.length < 8) {
-                    enteredPin += key
-                    updatePinDisplay()
-
-                    if (enteredPin.length == correctPin.length) {
-                        verifyPin()
-                    }
-                }
-            }
-        }
-    }
-
-    private fun updatePinDisplay() {
-
-        pinDisplay.text =
-            if (enteredPin.isEmpty()) {
-                "Enter PIN"
+        pinInput.setOnEditorActionListener { _, actionId, event ->
+            if (
+                actionId == EditorInfo.IME_ACTION_DONE ||
+                (event != null &&
+                 event.keyCode == KeyEvent.KEYCODE_ENTER)
+            ) {
+                attemptUnlock()
+                true
             } else {
-                "• ".repeat(enteredPin.length)
+                false
             }
+        }
+
+        val bottomSpacer = View(context)
+        root.addView(
+            bottomSpacer,
+            LinearLayout.LayoutParams(
+                1,
+                0,
+                1f
+            )
+        )
+
+        updateDateTime()
     }
 
-    private fun verifyPin() {
+    private fun attemptUnlock() {
+        val entered = pinInput.text.toString()
 
-        if (enteredPin == correctPin) {
+        if (entered == correctPin) {
+            status.text = "Unlocking..."
+            status.setTextColor(Color.rgb(100, 220, 140))
 
-            handler.removeCallbacks(clockRunnable)
+            val imm = context.getSystemService(
+                Context.INPUT_METHOD_SERVICE
+            ) as? InputMethodManager
 
-            animateUnlock()
+            imm?.hideSoftInputFromWindow(
+                pinInput.windowToken,
+                0
+            )
 
+            onUnlocked.run()
+            destroy()
         } else {
-
-            enteredPin = ""
-
-            pinDisplay.text = "Incorrect PIN"
-
-            postDelayed({
-                pinDisplay.text = "Enter PIN"
-            }, 1200)
+            status.text = "Incorrect PIN"
+            status.setTextColor(Color.rgb(255, 105, 105))
+            pinInput.text.clear()
+            pinInput.requestFocus()
         }
     }
 
-    private fun animateUnlock() {
-
-        animate()
-            .alpha(0f)
-            .setDuration(350)
-            .withEndAction {
-                visibility = View.GONE
-                alpha = 1f
-                onUnlocked.run()
-            }
-            .start()
-    }
-
-    private fun updateClock() {
-
+    private fun updateDateTime() {
         val now = Date()
 
-        clock.text =
-            SimpleDateFormat(
-                "HH:mm",
-                Locale.getDefault()
-            ).format(now)
+        clock.text = SimpleDateFormat(
+            "HH:mm",
+            Locale.getDefault()
+        ).format(now)
 
-        date.text =
-            SimpleDateFormat(
-                "EEEE, d MMMM",
-                Locale.getDefault()
-            ).format(now)
+        date.text = SimpleDateFormat(
+            "EEEE, d MMMM yyyy",
+            Locale.getDefault()
+        ).format(now)
+    }
+
+    private fun rounded(
+        color: Int,
+        radius: Int
+    ): GradientDrawable {
+        return GradientDrawable().apply {
+            setColor(color)
+            cornerRadius = radius.toFloat()
+        }
+    }
+
+    private fun dp(value: Int): Int {
+        return (value * resources.displayMetrics.density)
+            .toInt()
     }
 
     fun destroy() {
-        handler.removeCallbacks(clockRunnable)
+        removeCallbacks(clockUpdater)
+
+        val parent = parent
+        if (parent is android.view.ViewGroup) {
+            parent.removeView(this)
+        }
     }
 }
