@@ -1156,7 +1156,7 @@ public class MainActivity extends Activity {
                         "test -d " +
                         shellQuote(tempRoot + "/etc") + "; " +
                         "test -d " +
-                        shellQuote(tempRoot + "/usr");"
+                        shellQuote(tempRoot + "/usr");
                 );
 
                 runOnUiThread(() ->
