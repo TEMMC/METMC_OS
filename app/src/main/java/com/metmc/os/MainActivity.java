@@ -266,6 +266,7 @@ public class MainActivity extends Activity {
          * Desktop workspace.
          */
         area = new FrameLayout(this);
+        desktopArea = area;
 
         desktopArea.setBackgroundColor(BG);
 
@@ -1439,6 +1440,264 @@ public class MainActivity extends Activity {
             shellQuote(command);
 
         return runRoot(full);
+    }
+
+    String shellQuote(String value) {
+        if (value == null) {
+            return "''";
+        }
+
+        return "'" + value.replace("'", "'\\''") + "'";
+    }
+
+    void downloadFile(
+        String urlString,
+        File destination,
+        ProgressDialog progress
+    ) throws Exception {
+
+        HttpURLConnection connection = null;
+        InputStream input = null;
+        FileOutputStream output = null;
+
+        try {
+            URL url = new URL(urlString);
+
+            connection = (HttpURLConnection) url.openConnection();
+            connection.setConnectTimeout(30000);
+            connection.setReadTimeout(60000);
+            connection.setInstanceFollowRedirects(true);
+            connection.setRequestProperty(
+                "User-Agent",
+                "METMC-OS/" + BuildConfig.VERSION_NAME
+            );
+
+            connection.connect();
+
+            int response = connection.getResponseCode();
+
+            if (response < 200 || response >= 300) {
+                throw new IOException(
+                    "HTTP " + response + " while downloading Debian"
+                );
+            }
+
+            long total = connection.getContentLengthLong();
+
+            input = new BufferedInputStream(
+                connection.getInputStream()
+            );
+
+            output = new FileOutputStream(destination);
+
+            byte[] buffer = new byte[1024 * 128];
+            long downloaded = 0;
+            int count;
+
+            while ((count = input.read(buffer)) != -1) {
+                output.write(buffer, 0, count);
+                downloaded += count;
+
+                if (total > 0) {
+                    final int percent =
+                        (int)((downloaded * 100L) / total);
+
+                    runOnUiThread(() -> {
+                        progress.setIndeterminate(false);
+                        progress.setProgress(percent);
+                        progress.setMessage(
+                            "Downloading Debian 12... " +
+                            percent + "%"
+                        );
+                    });
+                }
+            }
+
+            output.flush();
+
+        } finally {
+            if (output != null) {
+                try {
+                    output.close();
+                } catch (Exception ignored) {
+                }
+            }
+
+            if (input != null) {
+                try {
+                    input.close();
+                } catch (Exception ignored) {
+                }
+            }
+
+            if (connection != null) {
+                connection.disconnect();
+            }
+        }
+    }
+
+    void showLinuxControl() {
+        final Dialog dialog = new Dialog(this);
+
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(
+            dp(20),
+            dp(20),
+            dp(20),
+            dp(20)
+        );
+        box.setBackgroundColor(PANEL);
+
+        TextView title = tv(
+            "METMC Linux • Debian",
+            22
+        );
+        title.setTypeface(
+            Typeface.DEFAULT,
+            Typeface.BOLD
+        );
+
+        box.addView(
+            title,
+            new LinearLayout.LayoutParams(
+                -1,
+                dp(55)
+            )
+        );
+
+        TextView status = tv(
+            "Debian ARM64 root filesystem is installed.",
+            14
+        );
+        status.setTextColor(GRAY);
+
+        box.addView(
+            status,
+            new LinearLayout.LayoutParams(
+                -1,
+                dp(45)
+            )
+        );
+
+        Button applications = btn(
+            "Linux Applications"
+        );
+
+        applications.setOnClickListener(
+            v -> showLinuxApps()
+        );
+
+        box.addView(
+            applications,
+            new LinearLayout.LayoutParams(
+                -1,
+                dp(52)
+            )
+        );
+
+        Button display = btn(
+            "Linux Display"
+        );
+
+        display.setOnClickListener(
+            v -> {
+                dialog.dismiss();
+                showLinuxDisplayWindow();
+            }
+        );
+
+        box.addView(
+            display,
+            new LinearLayout.LayoutParams(
+                -1,
+                dp(52)
+            )
+        );
+
+        Button terminal = btn(
+            "Linux Terminal"
+        );
+
+        terminal.setOnClickListener(
+            v -> {
+                LinuxGuiLauncher.launch(
+                    MainActivity.this,
+                    METMC_ROOTFS,
+                    "export DISPLAY=:100; " +
+                    "export XDG_RUNTIME_DIR=/tmp/metmc-runtime; " +
+                    "mkdir -p /tmp/metmc-runtime; " +
+                    "chmod 700 /tmp/metmc-runtime; " +
+                    "exec /bin/bash"
+                );
+
+                addRunningTask(
+                    "Linux Terminal",
+                    () -> LinuxGuiLauncher.launch(
+                        MainActivity.this,
+                        METMC_ROOTFS,
+                        "export DISPLAY=:100; " +
+                        "export XDG_RUNTIME_DIR=/tmp/metmc-runtime; " +
+                        "mkdir -p /tmp/metmc-runtime; " +
+                        "chmod 700 /tmp/metmc-runtime; " +
+                        "exec /bin/bash"
+                    )
+                );
+
+                dialog.dismiss();
+            }
+        );
+
+        box.addView(
+            terminal,
+            new LinearLayout.LayoutParams(
+                -1,
+                dp(52)
+            )
+        );
+
+        Button reinstall = btn(
+            "Reinstall Debian"
+        );
+
+        reinstall.setOnClickListener(
+            v -> {
+                dialog.dismiss();
+                installDebian();
+            }
+        );
+
+        box.addView(
+            reinstall,
+            new LinearLayout.LayoutParams(
+                -1,
+                dp(52)
+            )
+        );
+
+        Button close = btn("Close");
+
+        close.setOnClickListener(
+            v -> dialog.dismiss()
+        );
+
+        box.addView(
+            close,
+            new LinearLayout.LayoutParams(
+                -1,
+                dp(52)
+            )
+        );
+
+        dialog.setContentView(box);
+        dialog.show();
+
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setLayout(
+                dp(520),
+                dp(560)
+            );
+        }
     }
 
     String desktopValue(String data,String key) {
