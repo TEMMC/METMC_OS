@@ -185,7 +185,7 @@ class MetmcLockScreen(
             InputType.TYPE_NUMBER_VARIATION_PASSWORD
 
         pinInput.imeOptions = EditorInfo.IME_ACTION_DONE
-        pinInput.singleLine = true
+        pinInput.setSingleLine(true)
         pinInput.hint = "PIN"
         pinInput.setTextColor(textColor)
         pinInput.setHintTextColor(secondaryColor)
