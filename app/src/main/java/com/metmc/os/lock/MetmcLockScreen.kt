@@ -19,7 +19,7 @@ import java.util.Locale
 class MetmcLockScreen(
     context: Context,
     private val correctPin: String = "0000",
-    private val onUnlocked: () -> Unit
+    private val onUnlocked: Runnable
 ) : FrameLayout(context) {
 
     private val handler = Handler(Looper.getMainLooper())
@@ -421,7 +421,7 @@ class MetmcLockScreen(
             .withEndAction {
                 visibility = View.GONE
                 alpha = 1f
-                onUnlocked()
+                onUnlocked.run()
             }
             .start()
     }
