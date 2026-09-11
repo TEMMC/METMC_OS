@@ -1,1 +1,7 @@
 *.zip
+
+# METMC release signing material
+signing/
+
+# METMC release signing material
+signing/
