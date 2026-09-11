@@ -1,5 +1,7 @@
 package com.metmc.os;
 
+import com.metmc.os.lock.MetmcLockScreen;
+
 import com.metmc.os.linux.LinuxGuiEnvironment;
 import com.metmc.os.linux.LinuxGuiLauncher;
 import com.metmc.os.linux.DesktopWindow;
@@ -24,6 +26,9 @@ import java.net.*;
 import java.util.zip.GZIPInputStream;
 
 public class MainActivity extends Activity {
+
+    private MetmcLockScreen metmcLockScreen;
+
 
     private FrameLayout desktopArea;
 
@@ -72,7 +77,8 @@ public class MainActivity extends Activity {
 
         desktopView = new MetmcDesktop(this);
         setContentView(desktopView);
-        tick();
+
+        showMetmcLockScreen();        tick();
 
         checkLinuxEnvironmentOnStartup();
     }
@@ -1507,4 +1513,32 @@ public class MainActivity extends Activity {
         handler.removeCallbacksAndMessages(null);
         super.onDestroy();
     }
+
+    private void showMetmcLockScreen() {
+        metmcLockScreen = new MetmcLockScreen(
+                this,
+                "0000",
+                () -> {
+                    if (desktopView != null) {
+                        desktopView.setVisibility(View.VISIBLE);
+                    }
+                }
+        );
+
+        if (desktopView != null) {
+            desktopView.setVisibility(View.INVISIBLE);
+        }
+
+        addContentView(
+                metmcLockScreen,
+                new android.view.ViewGroup.LayoutParams(
+                        android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                        android.view.ViewGroup.LayoutParams.MATCH_PARENT
+                )
+        );
+
+        metmcLockScreen.bringToFront();
+        metmcLockScreen.requestFocus();
+    }
+
 }
