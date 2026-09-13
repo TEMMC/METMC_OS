@@ -98,8 +98,8 @@ jobs:
           set -e
 
           gradle clean assembleRelease \
-            -PMETMC_VERSION_CODE=7 \
-            -PMETMC_VERSION_NAME=7.0 \
+            -PMETMC_VERSION_CODE=8 \
+            -PMETMC_VERSION_NAME=8.0 \
             --stacktrace
 
       - name: Prepare release files
@@ -125,8 +125,8 @@ jobs:
           cat > metmc-update.json <<EOF
           {
             "packageName": "com.metmc.os",
-            "versionCode": 7,
-            "versionName": "7.0",
+            "versionCode": 8,
+            "versionName": "8.0",
             "sha256": "$SHA256",
             "apkUrl": "https://github.com/TEMMC/METMC_OS/releases/download/metmc-os-latest/metmc-os.apk"
           }
@@ -154,8 +154,8 @@ jobs:
             metmc-os.apk \
             metmc-os.apk.sha256 \
             metmc-update.json \
-            --title "METMC OS 7.0" \
-            --notes "METMC OS 7.0 automatic release."
+            --title "METMC OS 8.0" \
+            --notes "METMC OS 8.0 automatic release."
 
       - name: Upload signed APK artifact
         uses: actions/upload-artifact@v4
