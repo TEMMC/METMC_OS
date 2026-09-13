@@ -12,6 +12,7 @@ import android.widget.Toast;
 import org.json.JSONObject;
 
 import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
@@ -343,7 +344,7 @@ public final class MetmcUpdater {
 
                 int response = connection.getResponseCode();
 
-                if (response == HttpURLConnection.HTTP_REQUESTED_RANGE_NOT_SATISFIABLE) {
+                if (response == 416) {
                     partial.delete();
                     continue;
                 }
