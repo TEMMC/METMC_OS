@@ -32,6 +32,9 @@ public final class MetmcUpdater {
             "https://github.com/TEMMC/METMC_OS/releases/download/metmc-os-latest/metmc-update.json";
 
     private static final String APK_NAME = "metmc-os.apk";
+    private static final int DOWNLOAD_ATTEMPTS = 5;
+    private static final int CONNECT_TIMEOUT_MS = 30000;
+    private static final int READ_TIMEOUT_MS = 60000;
 
     private MetmcUpdater() {}
 
@@ -106,8 +109,8 @@ public final class MetmcUpdater {
         HttpURLConnection connection =
                 (HttpURLConnection) new URL(UPDATE_JSON).openConnection();
 
-        connection.setConnectTimeout(15000);
-        connection.setReadTimeout(20000);
+        connection.setConnectTimeout(CONNECT_TIMEOUT_MS);
+        connection.setReadTimeout(READ_TIMEOUT_MS);
         connection.setRequestMethod("GET");
         connection.setRequestProperty(
                 "User-Agent",
@@ -302,73 +305,158 @@ public final class MetmcUpdater {
     ) throws Exception {
 
         File dir = context.getExternalFilesDir(null);
+        if (dir == null) dir = context.getCacheDir();
 
-        if (dir == null) {
-            dir = context.getCacheDir();
+        if (!dir.exists() && !dir.mkdirs()) {
+            throw new Exception("Unable to create update directory.");
         }
 
-        File partial =
-                new File(dir, APK_NAME + ".part");
+        File partial = new File(dir, APK_NAME + ".part");
+        File apk = new File(dir, APK_NAME);
 
-        File apk =
-                new File(dir, APK_NAME);
+        Exception lastError = null;
 
-        if (partial.exists()) {
-            partial.delete();
-        }
+        for (int attempt = 1; attempt <= DOWNLOAD_ATTEMPTS; attempt++) {
+            HttpURLConnection connection = null;
 
-        HttpURLConnection connection =
-                (HttpURLConnection)
+            try {
+                long existing = partial.exists() ? partial.length() : 0L;
+
+                connection = (HttpURLConnection)
                         new URL(update.apkUrl).openConnection();
 
-        connection.setConnectTimeout(15000);
-        connection.setReadTimeout(30000);
-        connection.setRequestMethod("GET");
-        connection.setRequestProperty(
-                "User-Agent",
-                "METMC-OS-Updater"
-        );
+                connection.setConnectTimeout(CONNECT_TIMEOUT_MS);
+                connection.setReadTimeout(READ_TIMEOUT_MS);
+                connection.setRequestMethod("GET");
+                connection.setRequestProperty(
+                        "User-Agent",
+                        "METMC-OS-Updater"
+                );
+                connection.setInstanceFollowRedirects(true);
 
-        int response = connection.getResponseCode();
+                if (existing > 0) {
+                    connection.setRequestProperty(
+                            "Range",
+                            "bytes=" + existing + "-"
+                    );
+                }
 
-        if (response != HttpURLConnection.HTTP_OK) {
-            throw new Exception(
-                    "APK download failed: HTTP " + response
-            );
-        }
+                int response = connection.getResponseCode();
 
-        try (
-                InputStream input =
-                        new BufferedInputStream(
-                                connection.getInputStream()
+                if (response == HttpURLConnection.HTTP_REQUESTED_RANGE_NOT_SATISFIABLE) {
+                    partial.delete();
+                    continue;
+                }
+
+                boolean append =
+                        existing > 0 &&
+                        response == HttpURLConnection.HTTP_PARTIAL;
+
+                if (response != HttpURLConnection.HTTP_OK &&
+                        response != HttpURLConnection.HTTP_PARTIAL) {
+
+                    throw new Exception(
+                            "APK download failed: HTTP " + response
+                    );
+                }
+
+                /*
+                 * Server ignored our Range request.
+                 * Start again from byte zero rather than corrupting
+                 * the existing partial APK.
+                 */
+                if (existing > 0 && !append) {
+                    if (!partial.delete() && partial.exists()) {
+                        throw new Exception(
+                                "Unable to reset partial APK download."
                         );
+                    }
+                    append = false;
+                }
 
-                OutputStream output =
-                        new FileOutputStream(partial)
-        ) {
+                try (
+                        InputStream input =
+                                new BufferedInputStream(
+                                        connection.getInputStream()
+                                );
 
-            byte[] buffer = new byte[64 * 1024];
+                        OutputStream output =
+                                new BufferedOutputStream(
+                                        new FileOutputStream(
+                                                partial,
+                                                append
+                                        )
+                                )
+                ) {
 
-            int count;
+                    byte[] buffer = new byte[64 * 1024];
+                    int count;
 
-            while ((count = input.read(buffer)) != -1) {
-                output.write(buffer, 0, count);
+                    while ((count = input.read(buffer)) != -1) {
+                        if (count > 0) {
+                            output.write(buffer, 0, count);
+                        }
+                    }
+
+                    output.flush();
+                }
+
+                if (!partial.exists() || partial.length() == 0) {
+                    throw new Exception(
+                            "APK download produced an empty file."
+                    );
+                }
+
+                if (apk.exists() && !apk.delete()) {
+                    throw new Exception(
+                            "Unable to replace previous APK."
+                    );
+                }
+
+                if (!partial.renameTo(apk)) {
+                    throw new Exception(
+                            "Unable to finalize downloaded APK."
+                    );
+                }
+
+                return apk;
+
+            } catch (Exception e) {
+
+                lastError = e;
+
+                if (attempt < DOWNLOAD_ATTEMPTS) {
+                    try {
+                        Thread.sleep(1500L * attempt);
+                    } catch (InterruptedException interrupted) {
+                        Thread.currentThread().interrupt();
+
+                        throw new Exception(
+                                "APK download interrupted.",
+                                interrupted
+                        );
+                    }
+                }
+
+            } finally {
+                if (connection != null) {
+                    connection.disconnect();
+                }
             }
-        } finally {
-            connection.disconnect();
         }
 
-        if (apk.exists()) {
-            apk.delete();
-        }
-
-        if (!partial.renameTo(apk)) {
-            throw new Exception(
-                    "Unable to finalize downloaded APK."
-            );
-        }
-
-        return apk;
+        throw new Exception(
+                "APK download failed after " +
+                        DOWNLOAD_ATTEMPTS +
+                        " attempts. The partial download was kept " +
+                        "so the next attempt can resume.\n\n" +
+                        (
+                                lastError == null
+                                        ? "Unknown download error."
+                                        : lastError.getMessage()
+                        ),
+                lastError
+        );
     }
 
     private static void verifySha256(
