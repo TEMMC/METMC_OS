@@ -16,6 +16,23 @@ import java.util.*
 
 class FileManagerView(private val context: Context) : LinearLayout(context) {
 
+    private fun metmcRootAvailable(): Boolean {
+        return try {
+            Runtime.getRuntime()
+                .exec(arrayOf("su", "-c", "id"))
+                .inputStream
+                .bufferedReader()
+                .use { it.readText().contains("uid=0") }
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    private fun metmcRootPath(path: String): String {
+        return if (metmcRootAvailable()) path else path
+    }
+
+
     private enum class Tab { ANDROID, LINUX }
 
     private var activeTab = Tab.ANDROID
