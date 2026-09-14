@@ -49,7 +49,7 @@ object MetmcArchiveManager {
                 run("unzip -o '$input' -d '$output'")
 
             archive.name.matches(
-                Regex(".*\\.(tar|tar\\.gz|tgz|tar\\.bz2|tbz2|tar\\.xz|txz|tar\\.zst)$", true)
+                Regex(".*\\.(tar|tar\\.gz|tgz|tar\\.bz2|tbz2|tar\\.xz|txz|tar\\.zst)$", RegexOption.IGNORE_CASE)
             ) && commandExists("tar") ->
                 run("tar -xf '$input' -C '$output'")
 

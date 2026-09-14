@@ -3,6 +3,7 @@ package com.metmc.os.desktop
 import android.content.Context
 import android.graphics.Color
 import android.widget.FrameLayout
+import android.view.View
 
 class DesktopWorkspace(context: Context) : FrameLayout(context) {
 

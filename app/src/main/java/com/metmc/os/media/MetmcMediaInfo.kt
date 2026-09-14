@@ -1,5 +1,6 @@
 package com.metmc.os.media
 
+import android.content.ComponentName
 import android.content.Context
 import android.media.MediaMetadata
 import android.media.session.MediaController
@@ -67,6 +68,9 @@ class MetmcMediaNotificationListener : NotificationListenerService() {
 
     private var manager: MediaSessionManager? = null
 
+    private val listenerComponent: ComponentName
+        get() = ComponentName(this, MetmcMediaNotificationListener::class.java)
+
     private val listener =
         MediaSessionManager.OnActiveSessionsChangedListener { controllers ->
             val controller = controllers
@@ -85,7 +89,7 @@ class MetmcMediaNotificationListener : NotificationListenerService() {
         try {
             manager?.addOnActiveSessionsChangedListener(
                 listener,
-                componentName
+                listenerComponent
             )
         } catch (_: SecurityException) {
             MetmcMediaInfo.clear()
@@ -112,7 +116,7 @@ class MetmcMediaNotificationListener : NotificationListenerService() {
 
     private fun refresh() {
         try {
-            val controllers = manager?.getActiveSessions(componentName)
+            val controllers = manager?.getActiveSessions(listenerComponent)
             val controller = controllers
                 ?.firstOrNull { it.playbackState?.state ==
                         android.media.session.PlaybackState.STATE_PLAYING }

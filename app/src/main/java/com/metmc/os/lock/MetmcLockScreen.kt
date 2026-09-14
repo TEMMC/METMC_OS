@@ -95,9 +95,8 @@ class MetmcLockScreen(
             }
         )
 
-        // Keep the wallpaper behind all lock-screen controls.
-        wallpaperView.sendToBack()
-
+        // The wallpaper is inserted first, so subsequent lock-screen
+        // controls naturally remain above it.
         MetmcWallpaper.apply(context, wallpaperView)
     }
 
