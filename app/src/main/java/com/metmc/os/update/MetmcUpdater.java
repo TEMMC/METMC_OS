@@ -545,21 +545,24 @@ public final class MetmcUpdater {
             File apk
     ) {
         try {
-            String path =
+            String sourcePath =
                     apk.getAbsolutePath()
-                            .replace(
-                                    "\\",
-                                    "\\\\"
-                            )
-                            .replace(
-                                    "'",
-                                    "'\\''"
-                            );
+                            .replace("\\", "\\\\")
+                            .replace("'", "'\\''");
+
+            String stagedPath =
+                    "/data/local/tmp/metmc-os-update/metmc-os.apk";
 
             String command =
-                    "pm install -r '" +
-                    path +
-                    "'";
+                    "mkdir -p /data/local/tmp/metmc-os-update" +
+                    " && rm -f '" + stagedPath + "'" +
+                    " && cp '" + sourcePath + "' '" + stagedPath + "'" +
+                    " && chmod 644 '" + stagedPath + "'" +
+                    " && pm install -r '" + stagedPath + "'" +
+                    "; result=$?" +
+                    "; rm -f '" + stagedPath + "'" +
+                    "; rmdir /data/local/tmp/metmc-os-update 2>/dev/null || true" +
+                    "; exit $result";
 
             Process process =
                     new ProcessBuilder(
@@ -590,14 +593,17 @@ public final class MetmcUpdater {
             int result =
                     process.waitFor();
 
+            String installOutput =
+                    output.toString().trim();
+
             if (result != 0 ||
-                    !output.toString()
+                    !installOutput
                             .toLowerCase(Locale.US)
                             .contains("success")) {
 
                 throw new Exception(
                         "Root installation failed:\n" +
-                        output
+                        installOutput
                 );
             }
 

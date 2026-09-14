@@ -98,8 +98,8 @@ jobs:
           set -e
 
           gradle clean assembleRelease \
-            -PMETMC_VERSION_CODE=9 \
-            -PMETMC_VERSION_NAME=8.2 \
+            -PMETMC_VERSION_CODE=10 \
+            -PMETMC_VERSION_NAME=8.3 \
             --stacktrace
 
       - name: Prepare release files
@@ -125,8 +125,8 @@ jobs:
           cat > metmc-update.json <<EOF
           {
             "packageName": "com.metmc.os",
-            "versionCode": 9,
-            "versionName": "8.2",
+            "versionCode": 10,
+            "versionName": "8.3",
             "sha256": "$SHA256",
             "apkUrl": "https://github.com/TEMMC/METMC_OS/releases/download/metmc-os-latest/metmc-os.apk"
           }
@@ -154,8 +154,8 @@ jobs:
             metmc-os.apk \
             metmc-os.apk.sha256 \
             metmc-update.json \
-            --title "METMC OS 8.2" \
-            --notes "METMC OS 8.2: upgraded File Manager with ROOT filesystem management and a genuine non-root Debian terminal."
+            --title "METMC OS 8.3" \
+            --notes "METMC OS 8.3: fixed rooted updater installation by staging the APK under /data/local/tmp/."
 
       - name: Upload signed APK artifact
         uses: actions/upload-artifact@v4
