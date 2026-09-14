@@ -1,5 +1,6 @@
 package com.metmc.os;
 
+import com.metmc.os.integration.MetmcSystemIntegration;
 import com.metmc.os.lock.MetmcLockScreen;
 import com.metmc.os.update.MetmcUpdater;
 
@@ -72,6 +73,7 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onCreate(Bundle state) {
+        MetmcSystemIntegration.applyActivityRules(this);
         super.onCreate(state);
 
         getWindow().setStatusBarColor(Color.rgb(8,8,10));

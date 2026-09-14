@@ -1,5 +1,6 @@
 package com.metmc.os.desktop
 
+import com.metmc.os.files.MetmcArchiveManager
 import android.app.Activity
 import android.app.AlertDialog
 import android.content.Context
@@ -15,6 +16,30 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 class FileManagerView(private val context: Context) : LinearLayout(context) {
+
+    /**
+     * METMC archive operations.
+     *
+     * The actual formats supported depend on the archive utilities
+     * installed on the device/rootfs.
+     */
+    fun extractArchive(source: java.io.File, destination: java.io.File): Boolean {
+        return MetmcArchiveManager.extract(source, destination)
+    }
+
+    fun createTarArchive(source: java.io.File, destination: java.io.File): Boolean {
+        return MetmcArchiveManager.createTar(source, destination)
+    }
+
+    fun createZipArchive(source: java.io.File, destination: java.io.File): Boolean {
+        return MetmcArchiveManager.createZip(source, destination)
+    }
+
+    fun availableArchiveTools(): List<String> {
+        return MetmcArchiveManager.supportedTools()
+    }
+
+
 
     private fun metmcRootAvailable(): Boolean {
         return try {

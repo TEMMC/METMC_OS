@@ -56,4 +56,18 @@ object MetmcDisplaySettings {
                 ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
             }
     }
+    fun togglePortrait(context: Context): Boolean {
+        val enabled = !isPortraitEnabled(context)
+        setPortraitEnabled(context, enabled)
+        return enabled
+    }
+
+    fun label(context: Context): String {
+        return if (isPortraitEnabled(context)) {
+            "Portrait mode: ON"
+        } else {
+            "Portrait mode: OFF"
+        }
+    }
+
 }

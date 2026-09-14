@@ -330,6 +330,19 @@ class MetmcLockScreen(
         updateDateTime()
     }
 
+
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+
+        if (::wallpaperView.isInitialized) {
+            MetmcWallpaper.apply(context, wallpaperView)
+        }
+
+        if (::mediaInfo.isInitialized) {
+            updateMediaInfo()
+        }
+    }
+
     private fun updateMediaInfo() {
         if (!::mediaInfo.isInitialized) return
 
