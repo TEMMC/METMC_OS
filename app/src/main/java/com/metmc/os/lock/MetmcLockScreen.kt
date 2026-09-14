@@ -6,6 +6,10 @@ import android.content.Context
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
+import com.metmc.os.wallpaper.MetmcWallpaper
+import com.metmc.os.media.MetmcMediaInfo
+import android.widget.ImageView
+import android.graphics.drawable.ColorDrawable
 import android.text.InputType
 import android.view.Gravity
 import android.view.KeyEvent
@@ -38,10 +42,13 @@ class MetmcLockScreen(
     private lateinit var status: TextView
     private lateinit var clock: TextView
     private lateinit var date: TextView
+    private lateinit var mediaInfo: TextView
+    private lateinit var wallpaperView: ImageView
 
     private val clockUpdater = object : Runnable {
         override fun run() {
             updateDateTime()
+            updateMediaInfo()
             postDelayed(this, 1000)
         }
     }
@@ -50,6 +57,8 @@ class MetmcLockScreen(
         setBackgroundColor(backgroundColor)
         isFocusable = true
         isFocusableInTouchMode = true
+
+        setupWallpaper()
 
         buildUi()
 
@@ -68,6 +77,28 @@ class MetmcLockScreen(
         }
 
         post(clockUpdater)
+    }
+
+    private fun setupWallpaper() {
+        wallpaperView = ImageView(context)
+        wallpaperView.scaleType = ImageView.ScaleType.CENTER_CROP
+        wallpaperView.alpha = 0.72f
+        wallpaperView.setBackgroundColor(backgroundColor)
+
+        addView(
+            wallpaperView,
+            LayoutParams(
+                LayoutParams.MATCH_PARENT,
+                LayoutParams.MATCH_PARENT
+            ).apply {
+                gravity = Gravity.CENTER
+            }
+        )
+
+        // Keep the wallpaper behind all lock-screen controls.
+        wallpaperView.sendToBack()
+
+        MetmcWallpaper.apply(context, wallpaperView)
     }
 
     private fun buildUi() {
@@ -111,6 +142,22 @@ class MetmcLockScreen(
             LinearLayout.LayoutParams(
                 LayoutParams.MATCH_PARENT,
                 dp(42)
+            )
+        )
+
+        mediaInfo = TextView(context)
+        mediaInfo.setTextColor(secondaryColor)
+        mediaInfo.textSize = 14f
+        mediaInfo.gravity = Gravity.CENTER
+        mediaInfo.maxLines = 1
+        mediaInfo.ellipsize = android.text.TextUtils.TruncateAt.END
+        mediaInfo.text = ""
+
+        root.addView(
+            mediaInfo,
+            LinearLayout.LayoutParams(
+                LayoutParams.MATCH_PARENT,
+                dp(34)
             )
         )
 
@@ -281,6 +328,18 @@ class MetmcLockScreen(
         )
 
         updateDateTime()
+    }
+
+    private fun updateMediaInfo() {
+        if (!::mediaInfo.isInitialized) return
+
+        val text = MetmcMediaInfo.displayText()
+
+        mediaInfo.text = if (MetmcMediaInfo.playing && text.isNotBlank()) {
+            "♫ $text"
+        } else {
+            text
+        }
     }
 
     private fun attemptUnlock() {
