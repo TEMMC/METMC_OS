@@ -1,5 +1,7 @@
 package com.metmc.os.desktop;
 
+import com.metmc.os.desktop.MetmcWindowBounds;
+
 import android.app.Activity;
 import android.app.ActivityOptions;
 import android.content.Intent;
@@ -102,4 +104,25 @@ public final class AndroidWindowLauncher {
                         .density
         );
     }
+
+    /**
+     * Keeps an Android application window inside the METMC desktop
+     * workspace and above the taskbar.
+     */
+    public static void constrainAndroidWindow(
+            android.view.View window,
+            android.view.View desktop,
+            android.view.View taskbar
+    ) {
+        if (window == null || desktop == null) {
+            return;
+        }
+
+        MetmcWindowBounds.constrainWindow(
+                window,
+                desktop,
+                taskbar
+        );
+    }
+
 }
