@@ -1,5 +1,7 @@
 package com.metmc.os.lock
 
+import com.metmc.os.settings.MetmcSettingsStore
+
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import android.content.Context
@@ -234,7 +236,7 @@ class MetmcLockScreen(
 
         passwordInput.imeOptions = EditorInfo.IME_ACTION_DONE
         passwordInput.setSingleLine(true)
-        passwordInput.hint = "Password"
+        passwordInput.hint = when (MetmcSettingsStore.getLockType(context)) { "pin" -> "PIN"; "pattern" -> "Pattern"; else -> "Password" }
         passwordInput.setTextColor(textColor)
         passwordInput.setHintTextColor(secondaryColor)
         passwordInput.textSize = 20f
@@ -357,7 +359,7 @@ class MetmcLockScreen(
     private fun attemptUnlock() {
         val entered = passwordInput.text.toString()
 
-        if (entered == correctPassword) {
+        if (MetmcSettingsStore.getLockType(context) == "none" || entered == MetmcSettingsStore.getCredential(context)) {
             status.text = "Unlocking..."
             status.setTextColor(Color.rgb(100, 220, 140))
 

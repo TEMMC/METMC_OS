@@ -2015,6 +2015,7 @@ public class MainActivity extends Activity {
         super.onDestroy();
     }
 
+
     private void showMetmcLockScreen() {
         metmcLockScreen = new MetmcLockScreen(
                 this,

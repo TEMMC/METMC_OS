@@ -217,6 +217,12 @@ class XfceTaskbar(
             window.bringToFront()
         }
 
+        button.setOnLongClickListener {
+            window.close()
+            removeWindow(window)
+            true
+        }
+
         val params =
             LinearLayout.LayoutParams(
                 dp(130),
