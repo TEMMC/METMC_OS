@@ -58,7 +58,7 @@ class FileManagerView(private val context: Context) : LinearLayout(context) {
     }
 
 
-    private enum class Tab { ANDROID, LINUX }
+    private enum class Tab { ANDROID, LINUX, ROOT }
 
     private var activeTab = Tab.ANDROID
 
@@ -66,6 +66,7 @@ class FileManagerView(private val context: Context) : LinearLayout(context) {
         android.os.Environment.getExternalStorageDirectory()
 
     private var linuxPath: String = "/root"
+    private var rootPath: String = "/"
 
     private val pathLabel = TextView(context)
     private val listArea = LinearLayout(context)
@@ -73,6 +74,7 @@ class FileManagerView(private val context: Context) : LinearLayout(context) {
 
     private val tabAndroid = Button(context)
     private val tabLinux = Button(context)
+    private val tabRoot = Button(context)
 
     init {
         orientation = VERTICAL
@@ -114,11 +116,13 @@ class FileManagerView(private val context: Context) : LinearLayout(context) {
 
         styleTab(tabAndroid, "Android Storage", true)
         styleTab(tabLinux, "Linux Filesystem", false)
+        styleTab(tabRoot, "ROOT Filesystem", false)
 
         tabAndroid.setOnClickListener {
             activeTab = Tab.ANDROID
             styleTab(tabAndroid, "Android Storage", true)
             styleTab(tabLinux, "Linux Filesystem", false)
+            styleTab(tabRoot, "ROOT Filesystem", false)
             refresh()
         }
 
@@ -126,11 +130,26 @@ class FileManagerView(private val context: Context) : LinearLayout(context) {
             activeTab = Tab.LINUX
             styleTab(tabAndroid, "Android Storage", false)
             styleTab(tabLinux, "Linux Filesystem", true)
+            styleTab(tabRoot, "ROOT Filesystem", false)
+            refresh()
+        }
+
+        tabRoot.setOnClickListener {
+            if (!metmcRootAvailable()) {
+                Toast.makeText(context, "Root access unavailable", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+
+            activeTab = Tab.ROOT
+            styleTab(tabAndroid, "Android Storage", false)
+            styleTab(tabLinux, "Linux Filesystem", false)
+            styleTab(tabRoot, "ROOT Filesystem", true)
             refresh()
         }
 
         tabs.addView(tabAndroid, LinearLayout.LayoutParams(0, dp(48), 1f))
         tabs.addView(tabLinux, LinearLayout.LayoutParams(0, dp(48), 1f))
+        tabs.addView(tabRoot, LinearLayout.LayoutParams(0, dp(48), 1f))
 
         addView(tabs, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(48)))
     }
@@ -199,6 +218,13 @@ class FileManagerView(private val context: Context) : LinearLayout(context) {
                     refresh()
                 }
             }
+            Tab.ROOT -> {
+                if (rootPath != "/") {
+                    val idx = rootPath.trimEnd('/').lastIndexOf('/')
+                    rootPath = if (idx <= 0) "/" else rootPath.substring(0, idx)
+                    refresh()
+                }
+            }
         }
     }
 
@@ -206,12 +232,14 @@ class FileManagerView(private val context: Context) : LinearLayout(context) {
         pathLabel.text = when (activeTab) {
             Tab.ANDROID -> androidPath.absolutePath
             Tab.LINUX -> linuxPath
+            Tab.ROOT -> "ROOT:$rootPath"
         }
         listArea.removeAllViews()
 
         when (activeTab) {
             Tab.ANDROID -> loadAndroidEntries()
             Tab.LINUX -> loadLinuxEntries()
+            Tab.ROOT -> loadRootEntries()
         }
     }
 
@@ -297,6 +325,150 @@ class FileManagerView(private val context: Context) : LinearLayout(context) {
                 if (pathAtRequestTime == linuxPath) {
                     renderLinuxListing(output)
                 }
+            }
+        }.start()
+    }
+
+
+    private fun loadRootEntries() {
+        if (!metmcRootAvailable()) {
+            addMessageRow("Root access unavailable.")
+            return
+        }
+
+        addMessageRow("Loading ROOT filesystem...")
+
+        val pathAtRequestTime = rootPath
+
+        Thread {
+            val command =
+                "ls -la " + shellQuote(pathAtRequestTime) + " 2>&1"
+
+            val output = try {
+                val process = ProcessBuilder(
+                    "su", "-c", command
+                ).redirectErrorStream(true).start()
+
+                val text = process.inputStream.bufferedReader().readText()
+                process.waitFor()
+                text
+            } catch (e: Exception) {
+                "ERROR: $e"
+            }
+
+            (context as? Activity)?.runOnUiThread {
+                if (pathAtRequestTime == rootPath && activeTab == Tab.ROOT) {
+                    renderRootListing(output)
+                }
+            }
+        }.start()
+    }
+
+    private fun renderRootListing(raw: String) {
+        listArea.removeAllViews()
+
+        if (raw.startsWith("ERROR") ||
+            raw.contains("Permission denied") ||
+            raw.contains("No such file")) {
+            addMessageRow("Cannot read ROOT path:\n$raw")
+            return
+        }
+
+        val lines = raw.lines()
+        var shown = 0
+
+        for (line in lines) {
+            val trimmed = line.trim()
+
+            if (trimmed.isEmpty() ||
+                trimmed.startsWith("total ")) {
+                continue
+            }
+
+            val parts = trimmed.split(Regex("\\s+"), limit = 9)
+            if (parts.size < 9) continue
+
+            val perms = parts[0]
+            val name = parts[8]
+
+            if (name == "." || name == "..") continue
+
+            val isDir = perms.startsWith("d")
+            val isLink = perms.startsWith("l")
+
+            addFileRow(
+                icon = if (isDir) "📁" else if (isLink) "🔗" else "📄",
+                name = name,
+                subtitle = "ROOT • $perms",
+                onClick = {
+                    if (isDir) {
+                        rootPath =
+                            if (rootPath == "/") "/$name"
+                            else "$rootPath/$name"
+                        refresh()
+                    } else {
+                        Toast.makeText(
+                            context,
+                            "ROOT file: $name",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                },
+                onLongClick = {
+                    confirmDeleteRoot(name, isDir)
+                }
+            )
+
+            shown++
+        }
+
+        if (shown == 0) {
+            addMessageRow("This ROOT folder is empty.")
+        }
+    }
+
+    private fun confirmDeleteRoot(name: String, isDir: Boolean) {
+        AlertDialog.Builder(context)
+            .setTitle("ROOT: Delete")
+            .setMessage(
+                "Delete \"$name\" as root?\n\n" +
+                "This can affect Android itself."
+            )
+            .setPositiveButton("Delete") { _, _ ->
+                val target =
+                    if (rootPath == "/") "/$name"
+                    else "$rootPath/$name"
+
+                val flag = if (isDir) "-rf" else "-f"
+
+                runRootCommand(
+                    "rm $flag " + shellQuote(target)
+                ) {
+                    refresh()
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun runRootCommand(
+        command: String,
+        onDone: () -> Unit
+    ) {
+        Thread {
+            try {
+                val process = ProcessBuilder(
+                    "su", "-c",
+                    command
+                ).redirectErrorStream(true).start()
+
+                process.inputStream.bufferedReader().readText()
+                process.waitFor()
+            } catch (_: Exception) {
+            }
+
+            (context as? Activity)?.runOnUiThread {
+                onDone()
             }
         }.start()
     }
@@ -400,6 +572,10 @@ class FileManagerView(private val context: Context) : LinearLayout(context) {
                     Tab.LINUX -> {
                         val target = if (linuxPath == "/") "/$name" else "$linuxPath/$name"
                         runLinuxCommand("mkdir -p " + shellQuote(target)) { refresh() }
+                    }
+                    Tab.ROOT -> {
+                        val target = if (rootPath == "/") "/$name" else "$rootPath/$name"
+                        runRootCommand("mkdir -p " + shellQuote(target)) { refresh() }
                     }
                 }
             }

@@ -280,7 +280,7 @@ public class LinuxTerminalActivity extends Activity {
                         "export PS1=\"\\u@metmc:\\w$ \"; " +
                         "mkdir -p /tmp/metmc-runtime; " +
                         "chmod 700 /tmp/metmc-runtime; " +
-                        "cd /root; " +
+                        "cd /home/metmc; " +
                         "exec /bin/bash -i";
 
                 String wrapped;
@@ -298,7 +298,7 @@ public class LinuxTerminalActivity extends Activity {
                         "fi";
 
                 String chroot =
-                        "chroot " + quote(ROOTFS) +
+                        "chroot --userspec=1000:1000 " + quote(ROOTFS) +
                         " /bin/bash -lc " + quote(wrapped);
 
                 shell = new ProcessBuilder(
