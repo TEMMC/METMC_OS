@@ -42,4 +42,42 @@ class DesktopWorkspace(context: Context) : FrameLayout(context) {
             window.visibility = GONE
         }
     }
+
+    override fun onSizeChanged(
+        w: Int,
+        h: Int,
+        oldw: Int,
+        oldh: Int
+    ) {
+        super.onSizeChanged(w, h, oldw, oldh)
+
+        post {
+            MetmcWindowBounds.constrainAllChildren(
+                this,
+                findTaskbarView()
+            )
+        }
+    }
+
+    private fun findTaskbarView(): View? {
+        for (i in 0 until childCount) {
+            val child = getChildAt(i)
+            val name = child.tag?.toString()?.lowercase() ?: ""
+
+            if (name.contains("taskbar"))
+                return child
+
+            val idName = try {
+                resources.getResourceEntryName(child.id).lowercase()
+            } catch (_: Exception) {
+                ""
+            }
+
+            if (idName.contains("taskbar"))
+                return child
+        }
+
+        return null
+    }
+
 }
