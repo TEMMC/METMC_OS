@@ -21,7 +21,7 @@ import java.util.Locale
 
 class MetmcLockScreen(
     context: Context,
-    private val correctPin: String = "0000",
+    private val correctPassword: String = "metmc",
     private val onUnlocked: Runnable
 ) : FrameLayout(context) {
 
@@ -32,7 +32,7 @@ class MetmcLockScreen(
     private val secondaryColor = Color.rgb(170, 177, 190)
     private val accentColor = Color.rgb(70, 135, 255)
 
-    private lateinit var pinInput: EditText
+    private lateinit var passwordInput: EditText
     private lateinit var status: TextView
     private lateinit var clock: TextView
     private lateinit var date: TextView
@@ -53,14 +53,14 @@ class MetmcLockScreen(
 
         post {
             requestFocus()
-            pinInput.requestFocus()
+            passwordInput.requestFocus()
 
             val imm = context.getSystemService(
                 Context.INPUT_METHOD_SERVICE
             ) as? InputMethodManager
 
             imm?.showSoftInput(
-                pinInput,
+                passwordInput,
                 InputMethodManager.SHOW_IMPLICIT
             )
         }
@@ -179,23 +179,23 @@ class MetmcLockScreen(
             )
         )
 
-        pinInput = EditText(context)
-        pinInput.inputType =
-            InputType.TYPE_CLASS_NUMBER or
-            InputType.TYPE_NUMBER_VARIATION_PASSWORD
+        passwordInput = EditText(context)
+        passwordInput.inputType =
+            InputType.TYPE_CLASS_TEXT or
+            InputType.TYPE_TEXT_VARIATION_PASSWORD
 
-        pinInput.imeOptions = EditorInfo.IME_ACTION_DONE
-        pinInput.setSingleLine(true)
-        pinInput.hint = "PIN"
-        pinInput.setTextColor(textColor)
-        pinInput.setHintTextColor(secondaryColor)
-        pinInput.textSize = 20f
-        pinInput.gravity = Gravity.CENTER
-        pinInput.setPadding(dp(16), 0, dp(16), 0)
-        pinInput.background = rounded(fieldColor, dp(12))
+        passwordInput.imeOptions = EditorInfo.IME_ACTION_DONE
+        passwordInput.setSingleLine(true)
+        passwordInput.hint = "Password"
+        passwordInput.setTextColor(textColor)
+        passwordInput.setHintTextColor(secondaryColor)
+        passwordInput.textSize = 20f
+        passwordInput.gravity = Gravity.CENTER
+        passwordInput.setPadding(dp(16), 0, dp(16), 0)
+        passwordInput.background = rounded(fieldColor, dp(12))
 
         card.addView(
-            pinInput,
+            passwordInput,
             LinearLayout.LayoutParams(
                 LayoutParams.MATCH_PARENT,
                 dp(58)
@@ -225,7 +225,7 @@ class MetmcLockScreen(
         status.setTextColor(secondaryColor)
         status.textSize = 14f
         status.gravity = Gravity.CENTER
-        status.text = "Enter your PIN to continue"
+        status.text = "Enter your password to continue"
 
         card.addView(
             status,
@@ -255,7 +255,7 @@ class MetmcLockScreen(
             attemptUnlock()
         }
 
-        pinInput.setOnEditorActionListener { _, actionId, event ->
+        passwordInput.setOnEditorActionListener { _, actionId, event ->
             if (
                 actionId == EditorInfo.IME_ACTION_DONE ||
                 (event != null &&
@@ -282,9 +282,9 @@ class MetmcLockScreen(
     }
 
     private fun attemptUnlock() {
-        val entered = pinInput.text.toString()
+        val entered = passwordInput.text.toString()
 
-        if (entered == correctPin) {
+        if (entered == correctPassword) {
             status.text = "Unlocking..."
             status.setTextColor(Color.rgb(100, 220, 140))
 
@@ -293,17 +293,17 @@ class MetmcLockScreen(
             ) as? InputMethodManager
 
             imm?.hideSoftInputFromWindow(
-                pinInput.windowToken,
+                passwordInput.windowToken,
                 0
             )
 
             onUnlocked.run()
             destroy()
         } else {
-            status.text = "Incorrect PIN"
+            status.text = "Incorrect password"
             status.setTextColor(Color.rgb(255, 105, 105))
-            pinInput.text.clear()
-            pinInput.requestFocus()
+            passwordInput.text.clear()
+            passwordInput.requestFocus()
         }
     }
 

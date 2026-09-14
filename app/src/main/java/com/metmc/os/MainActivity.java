@@ -2016,7 +2016,7 @@ public class MainActivity extends Activity {
     private void showMetmcLockScreen() {
         metmcLockScreen = new MetmcLockScreen(
                 this,
-                "0000",
+                "metmc",
                 () -> {
                     if (desktopView != null) {
                         desktopView.setVisibility(View.VISIBLE);
