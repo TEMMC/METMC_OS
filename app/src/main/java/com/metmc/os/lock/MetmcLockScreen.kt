@@ -1,5 +1,7 @@
 package com.metmc.os.lock
 
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import android.content.Context
 import android.graphics.Color
 import android.graphics.Typeface
