@@ -20,14 +20,19 @@ object MetmcWallpaper {
                 uri,
                 android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
             )
+
+            prefs(context).edit()
+                .putString(KEY_URI, uri.toString())
+                .apply()
+
+            true
         } catch (_: Exception) {
+            prefs(context).edit()
+                .putString(KEY_URI, uri.toString())
+                .apply()
+
+            true
         }
-
-        prefs(context).edit()
-            .putString(KEY_URI, uri.toString())
-            .apply()
-
-        true
     }
 
     fun clear(context: Context) {
