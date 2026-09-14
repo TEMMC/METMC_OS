@@ -10,6 +10,7 @@ import com.metmc.os.wallpaper.MetmcWallpaper
 
 object MetmcSystemIntegration {
 
+    @JvmStatic
     fun applyActivityRules(activity: Activity) {
         MetmcDisplaySettings.applyOrientation(activity)
     }
