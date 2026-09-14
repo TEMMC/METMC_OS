@@ -136,7 +136,7 @@ public class LinuxTerminalActivity extends Activity {
         commandBar.setBackgroundColor(Color.rgb(20, 23, 28));
 
         TextView prompt = new TextView(this);
-        prompt.setText("root@metmc:~# ");
+        prompt.setText("metmc@metmc:~$ ");
         prompt.setTextColor(Color.rgb(110, 205, 135));
         prompt.setTextSize(14);
         prompt.setTypeface(Typeface.MONOSPACE, Typeface.BOLD);
@@ -268,15 +268,16 @@ public class LinuxTerminalActivity extends Activity {
             try {
 
                 String command =
-                        "export HOME=/root; " +
-                        "export USER=root; " +
-                        "export LOGNAME=root; " +
+                        "export HOME=/home/metmc; " +
+                        "export USER=metmc; " +
+                        "export LOGNAME=metmc; " +
                         "export SHELL=/bin/bash; " +
                         "export TERM=xterm-256color; " +
                         "export LANG=C.UTF-8; " +
                         "export LC_ALL=C.UTF-8; " +
                         "export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin; " +
                         "export XDG_RUNTIME_DIR=/tmp/metmc-runtime; " +
+                        "export PS1=\"\\u@metmc:\\w$ \"; " +
                         "mkdir -p /tmp/metmc-runtime; " +
                         "chmod 700 /tmp/metmc-runtime; " +
                         "cd /root; " +
