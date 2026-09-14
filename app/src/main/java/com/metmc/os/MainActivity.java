@@ -29,6 +29,7 @@ import java.util.zip.GZIPInputStream;
 public class MainActivity extends Activity {
 
     private MetmcLockScreen metmcLockScreen;
+    private boolean metmcScreenWasOff = false;
 
 
     private FrameLayout desktopArea;
@@ -81,6 +82,48 @@ public class MainActivity extends Activity {
 
         showMetmcLockScreen();
         tick();
+    }
+
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+
+        /*
+         * Only mark the lock as pending when the physical
+         * display is actually turned off. This avoids locking
+         * just because another Activity temporarily appears.
+         */
+        android.os.PowerManager pm =
+                (android.os.PowerManager)
+                        getSystemService(POWER_SERVICE);
+
+        if (pm != null && !pm.isInteractive()) {
+            metmcScreenWasOff = true;
+        }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+
+        /*
+         * Screen has become interactive again after being off.
+         * Put METMC OS back behind its lock screen.
+         */
+        if (metmcScreenWasOff) {
+            metmcScreenWasOff = false;
+
+            new Handler(Looper.getMainLooper()).postDelayed(
+                    () -> {
+                        if (!isFinishing()
+                                && !isDestroyed()) {
+                            showMetmcLockScreen();
+                        }
+                    },
+                    250
+            );
+        }
     }
 
     @Override
