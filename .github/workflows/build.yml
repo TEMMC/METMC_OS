@@ -10,6 +10,9 @@ on:
       - main
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -24,11 +27,6 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '8.11.1'
-
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
         with:
@@ -37,6 +35,7 @@ jobs:
       - name: Install Android SDK packages
         shell: bash
         run: |
+          set -e
           sdkmanager --licenses < <(printf 'y\n%.0s' {1..50}) || true
           sdkmanager \
             "platform-tools" \
@@ -45,21 +44,43 @@ jobs:
             "ndk;27.0.12077973" \
             "cmake;3.22.1"
 
+      - name: Prepare Gradle wrapper
+        shell: bash
+        run: |
+          set -e
+          chmod +x ./gradlew
+          ./gradlew --version
+
       - name: Build and show actual errors
         shell: bash
         run: |
           set +e
 
-          gradle clean assembleDebug --stacktrace > build.log 2>&1
-          BUILD_STATUS=$?
+          BUILD_STATUS=1
+          for attempt in 1 2 3; do
+            echo "========== GRADLE BUILD ATTEMPT $attempt/3 =========="
+            rm -f build.log
+
+            ./gradlew clean assembleDebug --stacktrace --no-daemon > build.log 2>&1
+            BUILD_STATUS=$?
+
+            if [ "$BUILD_STATUS" -eq 0 ]; then
+              echo "Gradle build succeeded on attempt $attempt."
+              break
+            fi
+
+            echo "Gradle build failed on attempt $attempt."
+            if [ "$attempt" -lt 3 ]; then
+              echo "Retrying after a short delay..."
+              sleep 10
+            fi
+          done
 
           echo "========== BUILD ERROR LOCATIONS =========="
-
           grep -nEi 'error:|\.java:[0-9]+:|\.kt:[0-9]+:|Execution failed for task|FAILURE: Build failed|BUILD FAILED' build.log | head -100 || true
 
           echo ""
           echo "========== FIRST ERROR CONTEXT =========="
-
           ERROR_LINE=$(grep -nEi 'error:|\.java:[0-9]+:|\.kt:[0-9]+:' build.log | head -1 | cut -d: -f1)
 
           if [ -n "$ERROR_LINE" ]; then
@@ -74,12 +95,10 @@ jobs:
 
           echo ""
           echo "========== FAILED TASK =========="
-
           grep -nE '> Task .* FAILED|Execution failed for task' build.log | head -30 || true
 
           echo ""
           echo "========== LAST 120 LINES =========="
-
           tail -120 build.log || true
 
           exit $BUILD_STATUS
