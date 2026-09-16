@@ -20,11 +20,11 @@ class MetmcTerminalView(private val context: android.content.Context) : LinearLa
 
     init {
         orientation=VERTICAL;setBackgroundColor(Color.rgb(5,7,10))
-        val top=LinearLayout(context).apply{orientation=HORIZONTAL;gravity=Gravity.CENTER_VERTICAL;setPadding(dp(12),0,dp(6),0);setBackgroundColor(Color.rgb(24,28,35))}
-        top.addView(TextView(context).apply{text="METMC Terminal";textSize=16f;setTextColor(Color.WHITE);typeface=Typeface.DEFAULT_BOLD},LinearLayout.LayoutParams(0,dp(50),1f))
+        val top=LinearLayout(context).apply{orientation=HORIZONTAL;gravity=Gravity.CENTER_VERTICAL;setPadding(dp(6),0,dp(6),0);setBackgroundColor(Color.rgb(24,28,35))}
+        top.addView(Space(context),LinearLayout.LayoutParams(0,dp(50),1f))
         top.addView(Button(context).apply{text="Clear";isAllCaps=false;setOnClickListener{output.text="";append(prompt)}},LinearLayout.LayoutParams(dp(72),dp(42)))
         addView(top,LayoutParams(-1,dp(56)))
-        output.setTextColor(Color.rgb(225,230,235));output.textSize=14f;output.typeface=Typeface.MONOSPACE;output.setTextIsSelectable(true);output.setPadding(dp(14),dp(12),dp(14),dp(12));output.text="METMC Terminal\nDebian ARM64\n\n$prompt"
+        output.setTextColor(Color.rgb(225,230,235));output.textSize=14f;output.typeface=Typeface.MONOSPACE;output.setTextIsSelectable(true);output.setPadding(dp(14),dp(12),dp(14),dp(12));output.text=prompt
         val scroll=ScrollView(context).apply{isFillViewport=true;addView(output,ScrollView.LayoutParams(-1,-2))};addView(scroll,LinearLayout.LayoutParams(-1,0,1f))
         val bar=LinearLayout(context).apply{orientation=HORIZONTAL;gravity=Gravity.CENTER_VERTICAL;setPadding(dp(8),dp(4),dp(8),dp(4));setBackgroundColor(Color.rgb(20,23,28))}
         bar.addView(TextView(context).apply{text=prompt;setTextColor(Color.rgb(110,205,135));textSize=13f;typeface=Typeface.MONOSPACE},LinearLayout.LayoutParams(-2,dp(50)))
