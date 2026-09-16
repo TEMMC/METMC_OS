@@ -63,6 +63,7 @@ class MetmcDesktop(context: Context) : FrameLayout(context) {
         box.addView(TextView(context).apply { text = "METMC Applications"; textSize = 21f; setTextColor(Color.WHITE); setPadding(dp(4), dp(4), dp(4), dp(12)) })
         fun button(text: String, action: () -> Unit) = Button(context).apply { this.text = text; isAllCaps = false; setTextColor(Color.WHITE); setOnClickListener { action() } }
         box.addView(button("T3 Private Browser") { createWindow("T3 Private Browser", com.metmc.os.apps.t3.T3PrivateBrowserView(context)) }, LinearLayout.LayoutParams(-1, dp(52)))
+        box.addView(button("METMC Office — File Opener") { activity?.startActivity(Intent(context, com.metmc.os.office.MetmcOfficeActivity::class.java)) }, LinearLayout.LayoutParams(-1, dp(52)))
         box.addView(button("Media Player") { createWindow("METMC Media Player", com.metmc.os.media.MetmcMediaPlayerView(context)) }, LinearLayout.LayoutParams(-1, dp(52)))
         box.addView(button("Settings") { createWindow("METMC OS Settings", com.metmc.os.settings.MetmcSettingsView(context)) }, LinearLayout.LayoutParams(-1, dp(52)))
         box.addView(button("Terminal") { createWindow("METMC Terminal", MetmcTerminalView(context)) }, LinearLayout.LayoutParams(-1, dp(52)))
