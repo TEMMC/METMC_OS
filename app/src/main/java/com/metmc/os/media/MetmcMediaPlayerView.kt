@@ -24,13 +24,16 @@ class MetmcMediaPlayerView(private val context: Context) : LinearLayout(context)
     init { orientation = VERTICAL; setBackgroundColor(Color.rgb(9, 12, 17)); build() }
 
     private fun build() {
-        val top = LinearLayout(context).apply {
-            orientation = HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(10), dp(6), dp(8), dp(6))
-            setBackgroundColor(Color.rgb(24, 29, 37))
-        }
-        top.addView(TextView(context).apply { text = "METMC Media Player"; textSize = 17f; setTextColor(Color.WHITE) }, LinearLayout.LayoutParams(0, dp(48), 1f))
+        val top = LinearLayout(context)
+        top.orientation = HORIZONTAL
+        top.gravity = Gravity.CENTER_VERTICAL
+        top.setPadding(dp(10), dp(6), dp(8), dp(6))
+        top.setBackgroundColor(Color.rgb(24, 29, 37))
+        val heading = TextView(context)
+        heading.text = "METMC Media Player"
+        heading.textSize = 17f
+        heading.setTextColor(Color.WHITE)
+        top.addView(heading, LinearLayout.LayoutParams(0, dp(48), 1f))
         top.addView(button("Open") { openPicker() }, LinearLayout.LayoutParams(dp(78), dp(44)))
         top.addView(button("Library") { scanLibrary() }, LinearLayout.LayoutParams(dp(84), dp(44)))
         addView(top, LinearLayout.LayoutParams(-1, dp(60)))
@@ -38,24 +41,24 @@ class MetmcMediaPlayerView(private val context: Context) : LinearLayout(context)
         video.setBackgroundColor(Color.BLACK)
         video.visibility = GONE
         addView(video, LinearLayout.LayoutParams(-1, 0, 1f))
-
         title.text = "No media selected"
         title.textSize = 17f
         title.setTextColor(Color.WHITE)
         title.gravity = Gravity.CENTER
         title.maxLines = 1
         addView(title, LinearLayout.LayoutParams(-1, dp(48)))
-
         status.text = "Open a file or scan your music and video library"
         status.textSize = 12f
         status.setTextColor(Color.LTGRAY)
         status.gravity = Gravity.CENTER
         addView(status, LinearLayout.LayoutParams(-1, dp(30)))
-
         seek.max = 1000
         addView(seek, LinearLayout.LayoutParams(-1, dp(40)))
 
-        val controls = LinearLayout(context).apply { orientation = HORIZONTAL; gravity = Gravity.CENTER; setPadding(dp(8), dp(4), dp(8), dp(8)) }
+        val controls = LinearLayout(context)
+        controls.orientation = HORIZONTAL
+        controls.gravity = Gravity.CENTER
+        controls.setPadding(dp(8), dp(4), dp(8), dp(8))
         controls.addView(button("−10s") { seekBy(-10000) }, controlParams())
         play.text = "▶ Play"
         play.isAllCaps = false
@@ -66,35 +69,18 @@ class MetmcMediaPlayerView(private val context: Context) : LinearLayout(context)
         addView(controls, LinearLayout.LayoutParams(-1, dp(62)))
 
         seek.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-            override fun onProgressChanged(s: SeekBar, p: Int, fromUser: Boolean) {
-                if (fromUser) player?.let { if (it.duration > 0) it.seekTo(it.duration * p / 1000) }
-            }
+            override fun onProgressChanged(s: SeekBar, p: Int, fromUser: Boolean) { if (fromUser) player?.let { if (it.duration > 0) it.seekTo(it.duration * p / 1000) } }
             override fun onStartTrackingTouch(s: SeekBar) {}
             override fun onStopTrackingTouch(s: SeekBar) {}
         })
     }
 
-    private fun button(text: String, action: () -> Unit) = Button(context).apply {
-        this.text = text
-        isAllCaps = false
-        textSize = 12f
-        setTextColor(Color.WHITE)
-        minWidth = 0
-        minimumWidth = 0
-        setOnClickListener { action() }
-    }
-
+    private fun button(label: String, action: () -> Unit) = Button(context).apply { text = label; isAllCaps = false; textSize = 12f; setTextColor(Color.WHITE); minWidth = 0; minimumWidth = 0; setOnClickListener { action() } }
     private fun controlParams() = LinearLayout.LayoutParams(dp(70), dp(46)).apply { marginStart = dp(3); marginEnd = dp(3) }
 
     private fun openPicker() {
-        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
-            type = "*/*"
-            putExtra(Intent.EXTRA_MIME_TYPES, arrayOf("audio/*", "video/*"))
-            addCategory(Intent.CATEGORY_OPENABLE)
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
-        }
-        try { (context as Activity).startActivityForResult(intent, 9010) }
-        catch (_: Exception) { Toast.makeText(context, "File picker unavailable", Toast.LENGTH_SHORT).show() }
+        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply { type = "*/*"; putExtra(Intent.EXTRA_MIME_TYPES, arrayOf("audio/*", "video/*")); addCategory(Intent.CATEGORY_OPENABLE); addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION) }
+        try { (context as Activity).startActivityForResult(intent, 9010) } catch (_: Exception) { Toast.makeText(context, "File picker unavailable", Toast.LENGTH_SHORT).show() }
     }
 
     fun openUri(uri: Uri) {
@@ -119,8 +105,9 @@ class MetmcMediaPlayerView(private val context: Context) : LinearLayout(context)
             val roots = ArrayList<String>()
             roots.add("/storage/emulated/0")
             try {
-                val process = ProcessBuilder("su", "-c", "for d in /storage/*; do [ -d \"$d\" ] && case \"$d\" in /storage/emulated|/storage/self) ;; *) echo \"$d\";; esac; done").start()
+                val process = ProcessBuilder("su", "-c", "for d in /storage/*; do [ -d \"\${'$'}d\" ] && case \"\${'$'}d\" in /storage/emulated|/storage/self) ;; *) echo \"\${'$'}d\";; esac; done").redirectErrorStream(true).start()
                 roots.addAll(process.inputStream.bufferedReader().readLines())
+                process.waitFor()
             } catch (_: Exception) {}
             val files = ArrayList<File>()
             fun walk(file: File, depth: Int) {
@@ -134,13 +121,19 @@ class MetmcMediaPlayerView(private val context: Context) : LinearLayout(context)
     }
 
     private fun showLibrary(files: List<File>) {
-        val box = LinearLayout(context).apply { orientation = VERTICAL; setPadding(dp(10), dp(8), dp(10), dp(8)) }
-        box.addView(TextView(context).apply { text = "Media Library • ${files.size} files"; textSize = 16f; setTextColor(Color.WHITE); setPadding(dp(6), dp(6), dp(6), dp(10)) })
+        val box = LinearLayout(context)
+        box.orientation = VERTICAL
+        box.setPadding(dp(10), dp(8), dp(10), dp(8))
+        val heading = TextView(context)
+        heading.text = "Media Library • ${files.size} files"
+        heading.textSize = 16f
+        heading.setTextColor(Color.WHITE)
+        heading.setPadding(dp(6), dp(6), dp(6), dp(10))
+        box.addView(heading)
         val scroll = ScrollView(context)
-        val list = LinearLayout(context).apply { orientation = VERTICAL }
-        files.forEach { file ->
-            list.addView(button("${if (file.extension.lowercase(Locale.ROOT) in videoExt) "▣" else "♫"}  ${file.name}") { openFile(file) }, LinearLayout.LayoutParams(-1, dp(52)))
-        }
+        val list = LinearLayout(context)
+        list.orientation = VERTICAL
+        files.forEach { file -> list.addView(button("${if (file.extension.lowercase(Locale.ROOT) in videoExt) "▣" else "♫"}  ${file.name}") { openFile(file) }, LinearLayout.LayoutParams(-1, dp(52))) }
         if (files.isEmpty()) list.addView(TextView(context).apply { text = "No supported media files found."; setTextColor(Color.LTGRAY); setPadding(dp(12), dp(20), dp(12), dp(20)) })
         scroll.addView(list)
         box.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
