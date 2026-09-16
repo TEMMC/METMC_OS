@@ -1,17 +1,14 @@
 package com.metmc.os.desktop
 
-import com.metmc.os.R
 import com.metmc.os.update.MetmcUpdater
 
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.graphics.Color
-import android.graphics.drawable.GradientDrawable
 import android.net.Uri
 import android.view.ViewGroup
 import android.view.Gravity
-import android.view.MotionEvent
 import android.view.View
 import android.widget.*
 import java.io.InputStream
@@ -60,7 +57,7 @@ class MetmcDesktop(
             gravity = Gravity.CENTER
         }
         val subtitle = TextView(context).apply {
-            text = "Android + Linux Desktop"
+            text = "A unified Android + Linux workspace"
             textSize = 17f
             setTextColor(Color.LTGRAY)
             gravity = Gravity.CENTER
@@ -133,8 +130,11 @@ class MetmcDesktop(
             DesktopAppMenu(context) { title, content -> createWindow(title, content) }.showLinuxApps()
         }, LinearLayout.LayoutParams(-1, dp(55)))
 
+        box.addView(launcherButton("Files") {
+            createWindow("Files", MetmcFileManagerView(context))
+        }, LinearLayout.LayoutParams(-1, dp(55)))
+
         box.addView(launcherButton("Wallpaper") { chooseWallpaper() }, LinearLayout.LayoutParams(-1, dp(55)))
-        box.addView(launcherButton("Files") { createWindow("Files", FileManagerView(context)) }, LinearLayout.LayoutParams(-1, dp(55)))
         box.addView(launcherButton("Updates") {
             activity?.let { MetmcUpdater.checkForUpdate(it, true) }
         }, LinearLayout.LayoutParams(-1, dp(55)))
