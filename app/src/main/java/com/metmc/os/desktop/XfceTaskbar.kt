@@ -218,7 +218,7 @@ class XfceTaskbar(
         }
 
         button.setOnLongClickListener {
-            window.close()
+            window.visibility = View.GONE
             removeWindow(window)
             true
         }
