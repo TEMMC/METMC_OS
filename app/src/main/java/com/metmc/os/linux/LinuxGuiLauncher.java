@@ -20,6 +20,8 @@ public final class LinuxGuiLauncher {
 
         new Thread(() -> {
             try {
+                com.metmc.os.boot.MetmcStorageBridge.mountSharedStorage();
+
                 String shell =
                         "export DISPLAY=:100; " +
                         "export HOME=/root; " +

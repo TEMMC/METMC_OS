@@ -8,6 +8,7 @@ import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.view.Gravity
+import android.webkit.MimeTypeMap
 import android.view.View
 import android.view.ViewGroup
 import android.widget.*
@@ -63,7 +64,7 @@ class FileManagerView(private val context: Context) : LinearLayout(context) {
     private var activeTab = Tab.ANDROID
 
     private var androidPath: File =
-        android.os.Environment.getExternalStorageDirectory()
+        File("/storage")
 
     private var linuxPath: String = "/root"
     private var rootPath: String = "/"
@@ -114,13 +115,13 @@ class FileManagerView(private val context: Context) : LinearLayout(context) {
         tabs.orientation = HORIZONTAL
         tabs.setBackgroundColor(Color.rgb(22, 24, 30))
 
-        styleTab(tabAndroid, "Android Storage", true)
+        styleTab(tabAndroid, "Shared Storage", true)
         styleTab(tabLinux, "Linux Filesystem", false)
         styleTab(tabRoot, "ROOT Filesystem", false)
 
         tabAndroid.setOnClickListener {
             activeTab = Tab.ANDROID
-            styleTab(tabAndroid, "Android Storage", true)
+            styleTab(tabAndroid, "Shared Storage", true)
             styleTab(tabLinux, "Linux Filesystem", false)
             styleTab(tabRoot, "ROOT Filesystem", false)
             refresh()
@@ -128,7 +129,7 @@ class FileManagerView(private val context: Context) : LinearLayout(context) {
 
         tabLinux.setOnClickListener {
             activeTab = Tab.LINUX
-            styleTab(tabAndroid, "Android Storage", false)
+            styleTab(tabAndroid, "Shared Storage", false)
             styleTab(tabLinux, "Linux Filesystem", true)
             styleTab(tabRoot, "ROOT Filesystem", false)
             refresh()
@@ -141,7 +142,7 @@ class FileManagerView(private val context: Context) : LinearLayout(context) {
             }
 
             activeTab = Tab.ROOT
-            styleTab(tabAndroid, "Android Storage", false)
+            styleTab(tabAndroid, "Shared Storage", false)
             styleTab(tabLinux, "Linux Filesystem", false)
             styleTab(tabRoot, "ROOT Filesystem", true)
             refresh()
@@ -240,6 +241,62 @@ class FileManagerView(private val context: Context) : LinearLayout(context) {
             Tab.ANDROID -> loadAndroidEntries()
             Tab.LINUX -> loadLinuxEntries()
             Tab.ROOT -> loadRootEntries()
+        }
+    }
+
+    private fun fileMimeType(file: File): String? {
+        if (!file.isFile) return null
+        val extension = file.extension.lowercase(Locale.ROOT)
+        if (extension.isEmpty()) return null
+        return MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension)
+    }
+
+    private fun fileTypeLabel(file: File): String {
+        if (file.isDirectory) return "Folder"
+
+        val mime = fileMimeType(file) ?: return
+            if (file.extension.isBlank()) "File"
+            else file.extension.uppercase(Locale.ROOT) + " file"
+
+        return when {
+            mime.startsWith("video/") -> "Video"
+            mime.startsWith("audio/") -> "Music / Audio"
+            mime.startsWith("image/") -> "Image"
+            mime == "application/pdf" -> "PDF"
+            mime.startsWith("text/") -> "Text"
+            mime.contains("zip") ||
+            mime.contains("compressed") ||
+            mime.contains("tar") ||
+            mime.contains("gzip") ||
+            mime.contains("bzip") ||
+            mime.contains("xz") ||
+            mime.contains("7z") -> "Archive"
+            mime == "application/vnd.android.package-archive" -> "Android APK"
+            mime.startsWith("application/") -> "File"
+            else -> "File"
+        }
+    }
+
+    private fun fileIcon(file: File): String {
+        if (file.isDirectory) return "📁"
+
+        val mime = fileMimeType(file) ?: return "📄"
+
+        return when {
+            mime.startsWith("video/") -> "🎬"
+            mime.startsWith("audio/") -> "🎵"
+            mime.startsWith("image/") -> "🖼️"
+            mime == "application/pdf" -> "📕"
+            mime.startsWith("text/") -> "📝"
+            mime.contains("zip") ||
+            mime.contains("compressed") ||
+            mime.contains("tar") ||
+            mime.contains("gzip") ||
+            mime.contains("bzip") ||
+            mime.contains("xz") ||
+            mime.contains("7z") -> "🗜️"
+            mime == "application/vnd.android.package-archive" -> "📦"
+            else -> "📄"
         }
     }
 

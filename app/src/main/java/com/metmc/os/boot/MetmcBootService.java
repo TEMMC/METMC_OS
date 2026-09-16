@@ -19,6 +19,8 @@ public class MetmcBootService extends Service {
 
         createNotificationChannel();
 
+        new Thread(() -> MetmcStorageBridge.mountSharedStorage()).start();
+
         Notification notification =
                 new Notification.Builder(this, CHANNEL_ID)
                         .setContentTitle("METMC OS")
