@@ -21,6 +21,53 @@ object MetInstaller {
 
                 unzip(metFile, workDir)
 
+                // Native METMC package format:
+                // manifest.met + metadata/desktop.met + app/resources/icons.
+                // The executable class is compiled into the METMC runtime APK;
+                // the .met package installs its resources/metadata only.
+                val nativeManifest = File(workDir, "T3-Private-Browser/manifest.met")
+                if (nativeManifest.exists()) {
+                    val values = nativeManifest.readLines()
+                        .mapNotNull { line ->
+                            val i = line.indexOf("=")
+                            if (i > 0) line.substring(0, i).trim() to line.substring(i + 1).trim()
+                            else null
+                        }.toMap()
+
+                    val appId = values["id"].orEmpty()
+                    val entry = values["entrypoint"].orEmpty()
+
+                    if (appId.isBlank() || entry.isBlank()) {
+                        finish(activity, onDone, false,
+                            "Invalid native .met package: missing id or entrypoint")
+                        return@Thread
+                    }
+
+                    val target = File("/data/local/met-apps/$appId")
+                    target.parentFile?.mkdirs()
+
+                    if (target.exists()) {
+                        target.deleteRecursively()
+                    }
+
+                    File(workDir, "T3-Private-Browser").copyRecursively(
+                        target,
+                        overwrite = true
+                    )
+
+                    finish(
+                        activity,
+                        onDone,
+                        true,
+                        "OK - installed native METMC app: ${values["name"] ?: appId}\n" +
+                            "Entry: $entry\n" +
+                            "Desktop: native DesktopWindow\n" +
+                            "X11: disabled\nVNC: disabled\nServer: disabled"
+                    )
+                    workDir.deleteRecursively()
+                    return@Thread
+                }
+
                 val manifestFile = File(workDir, "manifest.json")
                 if (!manifestFile.exists()) {
                     finish(activity, onDone, false, "Invalid .met package: no manifest.json found")

@@ -313,6 +313,26 @@ class MetmcDesktop(
 
         box.addView(title)
 
+        val t3 = Button(context)
+        t3.text = "T3 Private Browser"
+        t3.isAllCaps = false
+        t3.setTextColor(Color.WHITE)
+
+        box.addView(
+            t3,
+            LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                dp(55)
+            )
+        )
+
+        t3.setOnClickListener {
+            createWindow(
+                "T3 Private Browser",
+                com.metmc.os.apps.t3.T3PrivateBrowserView(context)
+            )
+        }
+
         val android = Button(context)
         android.text = "Android Applications"
         android.setAllCaps(false)
