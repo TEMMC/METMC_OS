@@ -354,7 +354,6 @@ class MetmcDesktop(
         }
 
         val wallpaper = Button(context)
-        wallpaper.text = "Wallpaper"
         wallpaper.isAllCaps = false
         wallpaper.setTextColor(Color.WHITE)
 
@@ -384,7 +383,6 @@ class MetmcDesktop(
         }
 
         val updates = Button(context)
-        updates.text = "Check for Updates"
         updates.isAllCaps = false
         updates.setTextColor(Color.WHITE)
 

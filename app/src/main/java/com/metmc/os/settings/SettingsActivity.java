@@ -226,4 +226,54 @@ public class SettingsActivity extends Activity {
         });
         root.addView(darkWallpaper);
     }
+
+    private void buildUpdatesPage() {
+        TextView title = new TextView(this);
+        title.setText("Updates");
+        title.setTextSize(24);
+        title.setPadding(24, 24, 24, 16);
+        title.setTypeface(null, android.graphics.Typeface.BOLD);
+
+        LinearLayout page = new LinearLayout(this);
+        page.setOrientation(LinearLayout.VERTICAL);
+        page.setPadding(24, 16, 24, 24);
+
+        page.addView(title);
+
+        Button check = new Button(this);
+        check.setText("Check for Updates");
+        check.setOnClickListener(v -> {
+            try {
+                Class<?> updater = Class.forName("com.metmc.os.update.MetmcUpdater");
+                java.lang.reflect.Method[] methods = updater.getDeclaredMethods();
+
+                for (java.lang.reflect.Method method : methods) {
+                    if (method.getName().toLowerCase().contains("check")
+                            || method.getName().toLowerCase().contains("update")) {
+                        if (method.getParameterCount() == 0) {
+                            method.setAccessible(true);
+                            method.invoke(null);
+                            return;
+                        }
+                    }
+                }
+
+                android.widget.Toast.makeText(
+                        this,
+                        "Update checker is unavailable",
+                        android.widget.Toast.LENGTH_LONG
+                ).show();
+            } catch (Throwable e) {
+                android.widget.Toast.makeText(
+                        this,
+                        "Unable to check for updates",
+                        android.widget.Toast.LENGTH_LONG
+                ).show();
+            }
+        });
+
+        page.addView(check);
+        setContentView(page);
+    }
+
 }

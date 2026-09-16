@@ -562,46 +562,6 @@ class DesktopAppMenu(
         console.setHorizontallyScrolling(false)
         console.isVerticalScrollBarEnabled = false
 
-        // TERMINAL_TRANSCRIPT_PROTECTION:
-        // The transcript and prompt are immutable. Only the current command
-        // after the final prompt may be edited.
-        console.setOnKeyListener { _, keyCode, event ->
-            if (event.action != android.view.KeyEvent.ACTION_DOWN) {
-                false
-            } else {
-                val text = console.text.toString()
-                val promptIndex = text.lastIndexOf(prompt)
-                val editableStart =
-                    if (promptIndex >= 0) promptIndex + prompt.length else text.length
-
-                val selectionStart = console.selectionStart
-                val selectionEnd = console.selectionEnd
-
-                when (keyCode) {
-                    android.view.KeyEvent.KEYCODE_DEL -> {
-                        selectionStart <= editableStart ||
-                        selectionEnd <= editableStart
-                    }
-                    android.view.KeyEvent.KEYCODE_FORWARD_DEL -> {
-                        selectionStart < editableStart
-                    }
-                    android.view.KeyEvent.KEYCODE_MOVE_HOME -> {
-                        console.setSelection(editableStart)
-                        true
-                    }
-                    android.view.KeyEvent.KEYCODE_DPAD_LEFT -> {
-                        if (selectionStart <= editableStart && selectionEnd <= editableStart) {
-                            console.setSelection(editableStart)
-                            true
-                        } else {
-                            false
-                        }
-                    }
-                    else -> false
-                }
-            }
-        }
-
         console.setText("METMC Terminal\n$prompt")
         console.setSelection(console.text.length)
 
