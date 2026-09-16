@@ -76,7 +76,7 @@ class MetmcLockScreen(context: Context, private val correctPassword: String = "m
             setPadding(dp(20), dp(16), dp(20), dp(20))
             clipToPadding = false
         }
-        scroll.addView(root, ScrollView.LayoutParams(-1, -1))
+        scroll.addView(root, FrameLayout.LayoutParams(-1, -1))
         addView(scroll, FrameLayout.LayoutParams(-1, -1))
 
         clock = TextView(context).apply { setTextColor(textColor); textSize = 44f; gravity = Gravity.CENTER }
@@ -130,7 +130,7 @@ class MetmcLockScreen(context: Context, private val correctPassword: String = "m
         card.addView(status, LinearLayout.LayoutParams(-1, dp(38)).apply { topMargin = dp(2) })
         card.addView(TextView(context).apply { text = "METMC OS powered by Tinotenda Enock Mapfumo aka Dr TEMMC"; setTextColor(Color.rgb(110,116,128)); textSize = 10f; gravity = Gravity.CENTER; maxLines = 2; ellipsize = TextUtils.TruncateAt.END }, LinearLayout.LayoutParams(-1, dp(32)))
 
-        unlock.setOnEditorActionListener { _, action, event ->
+        passwordInput.setOnEditorActionListener { _, action, event ->
             if (action == EditorInfo.IME_ACTION_DONE || (event != null && event.keyCode == KeyEvent.KEYCODE_ENTER)) { attemptUnlock(); true } else false
         }
         if (MetmcSettingsStore.getLockType(context) == "none") {
