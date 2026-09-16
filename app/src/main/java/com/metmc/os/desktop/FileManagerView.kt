@@ -254,9 +254,11 @@ class FileManagerView(private val context: Context) : LinearLayout(context) {
     private fun fileTypeLabel(file: File): String {
         if (file.isDirectory) return "Folder"
 
-        val mime = fileMimeType(file) ?: return
-            if (file.extension.isBlank()) "File"
-            else file.extension.uppercase(Locale.ROOT) + " file"
+        val mime = fileMimeType(file) ?: return if (file.extension.isBlank()) {
+            "File"
+        } else {
+            file.extension.uppercase(Locale.ROOT) + " file"
+        }
 
         return when {
             mime.startsWith("video/") -> "Video"
