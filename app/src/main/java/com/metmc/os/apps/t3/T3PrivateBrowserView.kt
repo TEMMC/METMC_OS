@@ -4,7 +4,6 @@ import android.content.Context
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.view.Gravity
-import android.view.View
 import android.view.ViewGroup
 import android.webkit.CookieManager
 import android.webkit.WebChromeClient
@@ -15,7 +14,6 @@ import android.webkit.WebViewClient
 import android.widget.EditText
 import android.widget.ImageButton
 import android.widget.LinearLayout
-import android.widget.TextView
 
 class T3PrivateBrowserView(context: Context) : LinearLayout(context) {
 
@@ -54,7 +52,7 @@ class T3PrivateBrowserView(context: Context) : LinearLayout(context) {
         address = EditText(context).apply {
             hint = "Search or enter address"
             textSize = 14f
-            singleLine = true
+            setSingleLine(true)
             setTextColor(Color.WHITE)
             setHintTextColor(Color.rgb(150, 155, 165))
             setPadding(dp(12), 0, dp(12), 0)
@@ -71,17 +69,10 @@ class T3PrivateBrowserView(context: Context) : LinearLayout(context) {
         toolbar.addView(address, LinearLayout.LayoutParams(0, dp(44), 1f))
         toolbar.addView(privateMode, size(42))
 
-        addView(
-            toolbar,
-            LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                dp(56)
-            )
-        )
+        addView(toolbar, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(56)))
 
         browser = WebView(context).apply {
             setBackgroundColor(Color.WHITE)
-
             settings.apply {
                 javaScriptEnabled = true
                 domStorageEnabled = true
@@ -96,78 +87,39 @@ class T3PrivateBrowserView(context: Context) : LinearLayout(context) {
                 allowFileAccess = false
                 allowContentAccess = false
             }
-
             CookieManager.getInstance().setAcceptCookie(true)
-
             webChromeClient = WebChromeClient()
-
             webViewClient = object : WebViewClient() {
-                override fun shouldOverrideUrlLoading(
-                    view: WebView,
-                    request: WebResourceRequest
-                ): Boolean = false
-
-                override fun onPageFinished(
-                    view: WebView,
-                    url: String
-                ) {
+                override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean = false
+                override fun onPageFinished(view: WebView, url: String) {
                     address.setText(url)
                     address.setSelection(address.length())
                 }
             }
         }
 
-        back.setOnClickListener {
-            if (browser.canGoBack()) browser.goBack()
-        }
-
-        forward.setOnClickListener {
-            if (browser.canGoForward()) browser.goForward()
-        }
-
-        reload.setOnClickListener {
-            browser.reload()
-        }
-
+        back.setOnClickListener { if (browser.canGoBack()) browser.goBack() }
+        forward.setOnClickListener { if (browser.canGoForward()) browser.goForward() }
+        reload.setOnClickListener { browser.reload() }
         privateMode.setOnClickListener {
             clearPrivateData()
             address.setText("")
             browser.loadUrl("about:blank")
         }
+        address.setOnEditorActionListener { _, _, _ -> navigate(address.text.toString()); true }
 
-        address.setOnEditorActionListener { _, _, _ ->
-            navigate(address.text.toString())
-            true
-        }
-
-        addView(
-            browser,
-            LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                0,
-                1f
-            )
-        )
-
+        addView(browser, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
         browser.loadUrl("https://www.google.com")
     }
 
     private fun navigate(value: String) {
         val input = value.trim()
         if (input.isEmpty()) return
-
         val url = when {
-            input.startsWith("http://") ||
-            input.startsWith("https://") -> input
-
-            input.contains(" ") ->
-                "https://www.google.com/search?q=" +
-                    android.net.Uri.encode(input)
-
-            else ->
-                "https://$input"
+            input.startsWith("http://") || input.startsWith("https://") -> input
+            input.contains(" ") -> "https://www.google.com/search?q=" + android.net.Uri.encode(input)
+            else -> "https://$input"
         }
-
         browser.loadUrl(url)
     }
 
@@ -188,14 +140,10 @@ class T3PrivateBrowserView(context: Context) : LinearLayout(context) {
     }
 
     private fun size(dp: Int): LinearLayout.LayoutParams =
-        LinearLayout.LayoutParams(
-            this.dp(dp),
-            this.dp(44)
-        ).apply {
+        LinearLayout.LayoutParams(this.dp(dp), this.dp(44)).apply {
             marginStart = this@T3PrivateBrowserView.dp(3)
             marginEnd = this@T3PrivateBrowserView.dp(3)
         }
 
-    private fun dp(value: Int): Int =
-        (value * resources.displayMetrics.density).toInt()
+    private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
 }
