@@ -21,7 +21,7 @@
 
     <uses-permission android:name="android.permission.MEDIA_CONTENT_CONTROL" />
 
-    <application android:enableOnBackInvokedCallback="true"
+    <application android:name=".MetmcApplication" android:enableOnBackInvokedCallback="true"
         android:allowBackup="false"
         android:label="METMC OS"
         android:theme="@style/Theme.METMCOS"
