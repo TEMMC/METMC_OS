@@ -27,10 +27,17 @@ class MetmcDesktop(context: Context) : FrameLayout(context) {
         desktopArea.setOnDragListener { _, event ->
             when (event.action) {
                 DragEvent.ACTION_DRAG_STARTED -> event.clipDescription?.hasMimeType("text/uri-list") == true || event.clipDescription?.hasMimeType("*/*") == true
+                DragEvent.ACTION_DRAG_ENTERED, DragEvent.ACTION_DRAG_EXITED -> true
                 DragEvent.ACTION_DROP -> {
                     val uri = event.clipData?.getItemAt(0)?.uri
                     if (uri != null) {
-                        try { createWindow("METMC Office", com.metmc.os.office.MetmcOfficeView(context)).also { w -> w.tag = uri.toString() } } catch (_: Exception) { }
+                        try {
+                            val intent = Intent(context, com.metmc.os.office.MetmcOfficeActivity::class.java).apply {
+                                data = uri
+                                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
+                            }
+                            context.startActivity(intent)
+                        } catch (_: Exception) { }
                         true
                     } else false
                 }
