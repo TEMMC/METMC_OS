@@ -16,6 +16,7 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
 
     steps:
       - name: Checkout
@@ -26,17 +27,16 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
+          cache: gradle
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
-        with:
-          packages: platform-tools
 
       - name: Install Android SDK packages
         shell: bash
         run: |
-          set -e
-          sdkmanager --licenses < <(printf 'y\n%.0s' {1..50}) || true
+          set -euo pipefail
+          yes | sdkmanager --licenses >/dev/null || true
           sdkmanager \
             "platform-tools" \
             "platforms;android-29" \
@@ -44,24 +44,58 @@ jobs:
             "ndk;27.0.12077973" \
             "cmake;3.22.1"
 
-      - name: Prepare Gradle wrapper
+      - name: Prepare Gradle
         shell: bash
         run: |
-          set -e
-          chmod +x ./gradlew
-          ./gradlew --version
+          set -euo pipefail
+          GRADLE_VERSION=8.11.1
+          GRADLE_DIR="$RUNNER_TEMP/gradle-$GRADLE_VERSION"
+          GRADLE_ZIP="$RUNNER_TEMP/gradle-$GRADLE_VERSION-bin.zip"
+          GRADLE_URL="https://services.gradle.org/distributions/gradle-$GRADLE_VERSION-bin.zip"
 
-      - name: Build and show actual errors
+          if [ ! -x "$GRADLE_DIR/bin/gradle" ]; then
+            echo "Gradle wrapper is not present in this repository; using a pinned Gradle distribution."
+            rm -f "$GRADLE_ZIP"
+            for attempt in 1 2 3 4 5; do
+              echo "Downloading Gradle $GRADLE_VERSION (attempt $attempt/5)..."
+              if curl --fail --location --retry 3 --retry-delay 5 --connect-timeout 20 --max-time 180 \
+                -o "$GRADLE_ZIP" "$GRADLE_URL"; then
+                break
+              fi
+              rm -f "$GRADLE_ZIP"
+              [ "$attempt" -lt 5 ] && sleep 10
+            done
+
+            test -s "$GRADLE_ZIP"
+            rm -rf "$GRADLE_DIR" "$RUNNER_TEMP/gradle-$GRADLE_VERSION"
+            mkdir -p "$RUNNER_TEMP/gradle-extract"
+            unzip -q "$GRADLE_ZIP" -d "$RUNNER_TEMP/gradle-extract"
+            mv "$RUNNER_TEMP/gradle-extract/gradle-$GRADLE_VERSION" "$GRADLE_DIR"
+            rm -rf "$RUNNER_TEMP/gradle-extract"
+          fi
+
+          echo "$GRADLE_DIR/bin" >> "$GITHUB_PATH"
+          gradle --version
+
+      - name: Verify Android project
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f settings.gradle
+          test -f build.gradle
+          test -f app/build.gradle || test -f app/build.gradle.kts
+          echo "Android project files verified."
+
+      - name: Build METMC OS with retries
         shell: bash
         run: |
           set +e
-
           BUILD_STATUS=1
+
           for attempt in 1 2 3; do
             echo "========== GRADLE BUILD ATTEMPT $attempt/3 =========="
             rm -f build.log
-
-            ./gradlew clean assembleDebug --stacktrace --no-daemon > build.log 2>&1
+            gradle clean assembleDebug --stacktrace --no-daemon > build.log 2>&1
             BUILD_STATUS=$?
 
             if [ "$BUILD_STATUS" -eq 0 ]; then
@@ -71,8 +105,8 @@ jobs:
 
             echo "Gradle build failed on attempt $attempt."
             if [ "$attempt" -lt 3 ]; then
-              echo "Retrying after a short delay..."
-              sleep 10
+              echo "Retrying after 15 seconds..."
+              sleep 15
             fi
           done
 
@@ -82,14 +116,11 @@ jobs:
           echo ""
           echo "========== FIRST ERROR CONTEXT =========="
           ERROR_LINE=$(grep -nEi 'error:|\.java:[0-9]+:|\.kt:[0-9]+:' build.log | head -1 | cut -d: -f1)
-
           if [ -n "$ERROR_LINE" ]; then
-            START=$((ERROR_LINE - 15))
-            [ "$START" -lt 1 ] && START=1
+            START=$((ERROR_LINE - 15)); [ "$START" -lt 1 ] && START=1
             END=$((ERROR_LINE + 60))
             sed -n "${START},${END}p" build.log
           else
-            echo "No direct compiler error found."
             grep -nEi -B10 -A30 'Execution failed for task|What went wrong|Caused by:' build.log | head -200 || true
           fi
 
@@ -109,6 +140,16 @@ jobs:
         with:
           name: METMC-OS-build-log
           path: build.log
+          if-no-files-found: warn
+
+      - name: Verify APK output
+        if: success()
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK_COUNT=$(find app/build/outputs/apk/debug -maxdepth 1 -type f -name '*.apk' | wc -l)
+          test "$APK_COUNT" -gt 0
+          find app/build/outputs/apk/debug -maxdepth 1 -type f -name '*.apk' -print
 
       - name: Upload APK
         if: success()
@@ -116,3 +157,4 @@ jobs:
         with:
           name: METMC-OS-debug
           path: app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
