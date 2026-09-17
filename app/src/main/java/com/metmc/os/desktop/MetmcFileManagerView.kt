@@ -39,7 +39,7 @@ class MetmcFileManagerView(private val context: Context) : LinearLayout(context)
         }
         addView(path, LinearLayout.LayoutParams(-1, dp(38)))
         val scroll = ScrollView(context)
-        scroll.addView(list, ScrollView.LayoutParams(-1, -2))
+        scroll.addView(list, FrameLayout.LayoutParams(-1, -2))
         addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
         detectSd()
         refresh()
