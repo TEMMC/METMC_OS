@@ -9,13 +9,13 @@ import android.util.Log
  * Initializes the bridge service infrastructure and chroot runtime
  * at application startup.
  */
-class METMC OSApp : Application() {
+class METMCApp : Application() {
 
     companion object {
         const val TAG = "METMC OS"
 
         @Volatile
-        lateinit var instance: METMC OSApp
+        lateinit var instance: METMCApp
             private set
     }
 
