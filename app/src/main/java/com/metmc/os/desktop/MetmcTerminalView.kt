@@ -46,7 +46,7 @@ class MetmcTerminalView(private val context: android.content.Context) : LinearLa
         }
         val scroll = ScrollView(context).apply {
             isFillViewport = true
-            addView(output, ScrollView.LayoutParams(-1, -2))
+            addView(output, FrameLayout.LayoutParams(-1, -2))
         }
         addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
 
