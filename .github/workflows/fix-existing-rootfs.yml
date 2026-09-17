@@ -1,0 +1,57 @@
+name: Apply existing Debian rootfs detection fix
+
+on:
+  push:
+    branches: [x11-native]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: ${{ !contains(github.event.head_commit.message, 'existing Debian rootfs detection fix') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: x11-native
+          fetch-depth: 0
+
+      - name: Patch rootfs detection and remove this one-shot workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          python3 - <<'PY'
+          from pathlib import Path
+
+          files = [
+              Path('android/app/src/main/java/com/metmc/os/runtime/RootfsManager.kt'),
+              Path('android/app/src/main/java/com/metmc/os/runtime/ChrootManager.kt'),
+          ]
+
+          old = '''test -f $EXISTING_DEBIAN_ROOTFS/etc/debian_version && " +
+                    "test -x $EXISTING_DEBIAN_ROOTFS/usr/bin/bash'''
+          new = '''test -f $EXISTING_DEBIAN_ROOTFS/etc/debian_version && " +
+                    "(test -x $EXISTING_DEBIAN_ROOTFS/usr/bin/bash || " +
+                    "test -x $EXISTING_DEBIAN_ROOTFS/bin/bash)'''
+
+          changed = 0
+          for path in files:
+              text = path.read_text()
+              if old in text:
+                  text = text.replace(old, new)
+                  path.write_text(text)
+                  changed += 1
+
+          if changed != 2:
+              raise SystemExit(f'Expected both rootfs probes to change, changed={changed}')
+          PY
+
+          git rm .github/workflows/fix-existing-rootfs.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add android/app/src/main/java/com/metmc/os/runtime/RootfsManager.kt \
+                  android/app/src/main/java/com/metmc/os/runtime/ChrootManager.kt
+          git commit -m 'Fix existing Debian rootfs detection fix'
+          git push origin HEAD:x11-native
