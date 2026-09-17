@@ -23,6 +23,13 @@ class MetmcShellBar(
 
     private val clock = TextView(context)
     private val windowStrip = LinearLayout(context)
+    private val clockTick = object : Runnable {
+        override fun run() {
+            clock.text = SimpleDateFormat("EEE  HH:mm", Locale.getDefault()).format(Date())
+            refreshWindows()
+            postDelayed(this, 1000)
+        }
+    }
 
     init {
         orientation = HORIZONTAL
@@ -64,14 +71,6 @@ class MetmcShellBar(
 
         refreshWindows()
         post(clockTick)
-    }
-
-    private val clockTick = object : Runnable {
-        override fun run() {
-            clock.text = SimpleDateFormat("EEE  HH:mm", Locale.getDefault()).format(Date())
-            refreshWindows()
-            postDelayed(this, 1000)
-        }
     }
 
     private fun refreshWindows() {
