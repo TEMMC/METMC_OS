@@ -16,7 +16,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Repair malformed Kotlin block
+      - name: Repair malformed Kotlin blocks
         shell: bash
         run: |
           python3 - <<'PY'
@@ -26,7 +26,11 @@ jobs:
           out = []
           changed = False
           for line in lines:
-              if 'Thread { runRoot(if (tab == Tab.LINUX)' in line:
+              if 'val scan = "find $safeTarget' in line:
+                  indent = line[:len(line) - len(line.lstrip())]
+                  out.append(indent + '''val scan = """find $safeTarget -mindepth 1 -maxdepth 1 -print 2>/dev/null | while IFS= read -r ${'$'}p; do if [ -d \"${'$'}p\" ]; then printf 'd\\t%s\\t0\\n' \"${'$'}p\"; elif [ -f \"${'$'}p\" ]; then s=${'$'}(stat -c %s \"${'$'}p\" 2>/dev/null || echo 0); printf 'f\\t%s\\t%s\\n' \"${'$'}p\" \"${'$'}s\"; else printf 'o\\t%s\\t0\\n' \"${'$'}p\"; fi; done"""''')
+                  changed = True
+              elif 'Thread { runRoot(if (tab == Tab.LINUX)' in line:
                   indent = line[:len(line) - len(line.lstrip())]
                   out.extend([
                       indent + 'Thread {',
@@ -58,5 +62,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add app/src/main/java/com/metmc/os/desktop/MetmcFileManagerView.kt
-          git commit -m "Fix METMC file manager Kotlin syntax error"
+          git commit -m "Fix METMC file manager shell variable escaping"
           git push
