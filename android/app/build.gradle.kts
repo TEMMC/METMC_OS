@@ -38,8 +38,6 @@ val preparePatchedXlorie by tasks.registering {
             replacement.copyInto(bytes, offset)
         }
 
-        // Upstream ddxReady() forces CursorVisible=TRUE and installs rootCursor,
-        // overriding Xorg's -nocursor flag. Preserve FALSE and skip that call.
         patch(0x0e3288, byteArrayOf(0x2b, 0x00, 0x80.toByte(), 0x52),
             byteArrayOf(0xeb.toByte(), 0x03, 0x1f, 0x2a))
         patch(0x0e32b8, byteArrayOf(0x80.toByte(), 0x01, 0x3f, 0xd6.toByte()),
@@ -85,16 +83,19 @@ val verifyBundledRootfs by tasks.registering {
     }
 }
 
+val metmcVersionCode = providers.gradleProperty("METMC_VERSION_CODE").orNull?.toIntOrNull() ?: 1
+val metmcVersionName = providers.gradleProperty("METMC_VERSION_NAME").orNull ?: "0.1.0-alpha"
+
 android {
     namespace = "com.metmc"
     compileSdk = 35
 
     defaultConfig {
         applicationId = "com.metmc.os"
-        minSdk = 28  // Android 9+ (modern root tools, Camera2 stable)
+        minSdk = 28
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.1.0-alpha"
+        versionCode = metmcVersionCode
+        versionName = metmcVersionName
 
         ndk {
             abiFilters += listOf("arm64-v8a")
@@ -147,8 +148,6 @@ android {
     }
 
     androidResources {
-        // The production rootfs is already gzip-compressed. Recompressing it
-        // wastes build memory and provides no meaningful size reduction.
         noCompress += "tgz"
     }
 }
@@ -165,7 +164,5 @@ dependencies {
     implementation("com.google.android.material:material:1.12.0")
     implementation("androidx.lifecycle:lifecycle-service:2.8.3")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
-
-    // JSON serialization for bridge protocol
     implementation("org.json:json:20240303")
 }
