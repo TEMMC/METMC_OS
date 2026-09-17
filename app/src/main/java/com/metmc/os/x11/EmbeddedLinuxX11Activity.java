@@ -2,6 +2,7 @@ package com.metmc.os.x11;
 
 import android.app.Activity;
 import android.os.Bundle;
+import android.system.ErrnoException;
 import android.system.Os;
 import android.util.Log;
 import android.view.ViewGroup;
@@ -29,8 +30,15 @@ public final class EmbeddedLinuxX11Activity extends Activity {
         File tmp = new File(getFilesDir(), "x11tmp");
         tmp.mkdirs();
         new File(tmp, ".X11-unix").mkdirs();
-        Os.setenv("TMPDIR", tmp.getAbsolutePath(), true);
-        Os.setenv("XDG_RUNTIME_DIR", tmp.getAbsolutePath(), true);
+
+        try {
+            Os.setenv("TMPDIR", tmp.getAbsolutePath(), true);
+            Os.setenv("XDG_RUNTIME_DIR", tmp.getAbsolutePath(), true);
+        } catch (ErrnoException e) {
+            Log.e(TAG, "Unable to configure runtime environment", e);
+            finish();
+            return;
+        }
 
         try {
             CmdEntryPoint server = new CmdEntryPoint();
