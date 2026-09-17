@@ -26,8 +26,29 @@ class ChrootManager(private val context: Context) {
 
     private val rootShell = RootShell(context)
 
+    /**
+     * Reuse the device-wide Debian installation when one already exists.
+     * The existing tree is selected in place; METMC OS never deletes or
+     * replaces it with a newly downloaded archive.
+     */
+    fun adoptExistingDebianRootfs(): Boolean {
+        if (!hasRoot()) return false
+        val existing = File("/data/local/linux/rootfs")
+        val probe = rootShell.exec(
+            "test -d ${existing.absolutePath} && " +
+                "test -f ${existing.absolutePath}/etc/os-release && " +
+                "test -f ${existing.absolutePath}/etc/debian_version && " +
+                "test -x ${existing.absolutePath}/usr/bin/bash && " +
+                "echo METMC_EXISTING_DEBIAN_ROOTFS"
+        )
+        if (!probe.contains("METMC_EXISTING_DEBIAN_ROOTFS")) return false
+        rootfsDir = existing
+        Log.i(TAG, "Reusing existing Debian rootfs at ${existing.absolutePath}")
+        return true
+    }
+
     private val baseDir: File get() = context.filesDir
-    private val rootfsDir: File get() = File(baseDir, "rootfs")
+    private var rootfsDir: File = File(baseDir, "rootfs")
     private val tmpDir: File get() = File(baseDir, "tmp")
     private val shmDir: File get() = File(baseDir, "shm")
     private val x11HostDir: File get() = File(tmpDir, ".X11-unix")

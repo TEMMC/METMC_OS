@@ -17,6 +17,7 @@ class RootfsManager(private val context: Context) {
         private const val TAG = "METMC OS.RootfsManager"
         private const val BUFFER_SIZE = 8192
         private const val BUNDLED_ROOTFS_ASSET = "rootfs/metmc-rootfs-arm64.tgz"
+        private const val EXISTING_DEBIAN_ROOTFS = "/data/local/linux/rootfs"
 
         val DISTRO_URLS = mapOf(
             "debian" to "https://deb.debian.org/debian/dists/bookworm/main/installer-arm64/current/images/netboot/debian-installer/arm64/root.tar.gz",
@@ -41,8 +42,30 @@ class RootfsManager(private val context: Context) {
     fun getRootfsPath(): String = rootfsDir.absolutePath
 
     fun isRootfsReady(): Boolean =
-        rootfsDir.exists() && File(rootfsDir, "bin").exists() &&
-        File(rootfsDir, "usr").exists() && File(rootfsDir, "etc").exists()
+        (rootfsDir.exists() && File(rootfsDir, "bin").exists() &&
+            File(rootfsDir, "usr").exists() && File(rootfsDir, "etc").exists()) ||
+            hasExistingDebianRootfs()
+
+    /**
+     * Detect a Debian rootfs that was already installed outside METMC OS.
+     * This probe runs through su because /data/local/linux/rootfs is normally
+     * protected from the Android app UID. Nothing is copied or overwritten.
+     */
+    fun hasExistingDebianRootfs(): Boolean {
+        return try {
+            val process = ProcessBuilder(
+                "su", "-c",
+                "test -d $EXISTING_DEBIAN_ROOTFS && " +
+                    "test -f $EXISTING_DEBIAN_ROOTFS/etc/os-release && " +
+                    "test -f $EXISTING_DEBIAN_ROOTFS/etc/debian_version && " +
+                    "test -x $EXISTING_DEBIAN_ROOTFS/usr/bin/bash"
+            ).redirectErrorStream(true).start()
+            process.waitFor() == 0
+        } catch (error: Throwable) {
+            Log.w(TAG, "Could not probe existing Debian rootfs", error)
+            false
+        }
+    }
 
     fun isSetupComplete(): Boolean = setupCompleteFile.exists()
 

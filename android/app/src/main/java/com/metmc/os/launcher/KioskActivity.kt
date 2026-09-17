@@ -627,6 +627,10 @@ class KioskActivity : Activity() {
                 return
             }
             waitingForRoot = false
+            val reusedExistingRootfs = chrootManager.adoptExistingDebianRootfs()
+            if (reusedExistingRootfs) {
+                updateOverlay(0.04, "Existing Debian rootfs found", "Reusing /data/local/linux/rootfs — no new download")
+            }
             SharedFolderSync.start(this)
             runOnUiThread {
                 overlayLayout?.apply {
