@@ -17,7 +17,6 @@
     </queries>
 
     <application
-        android:name=".MetmcApplication"
         android:allowBackup="false"
         android:label="METMC OS"
         android:theme="@style/Theme.METMCOS"
