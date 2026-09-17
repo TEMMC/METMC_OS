@@ -193,7 +193,7 @@ class MetmcOfficeView(private val context: Context) : LinearLayout(context) {
             setPadding(dp(18), dp(18), dp(18), dp(18))
             setTextIsSelectable(true)
         }
-        scroll.addView(tv, ScrollView.LayoutParams(-1, -2))
+        scroll.addView(tv, FrameLayout.LayoutParams(-1, -2))
         body.addView(scroll, FrameLayout.LayoutParams(-1, -1))
     }
 
