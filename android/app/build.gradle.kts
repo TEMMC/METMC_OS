@@ -76,22 +76,30 @@ android {
 tasks.named("preBuild").configure {
     dependsOn(preparePatchedXlorie)
     doLast {
-        // The phone may already contain a complete Debian tree installed by
-        // Termux/debootstrap at /data/local/linux/rootfs. Keep that installation
-        // reusable instead of forcing a new download. This build-time patch is
-        // idempotent and also accepts Debian layouts where bash is /bin/bash.
-        val probeFiles = listOf(
-            file("src/main/java/com/metmc/os/runtime/RootfsManager.kt"),
-            file("src/main/java/com/metmc/os/runtime/ChrootManager.kt")
-        )
-        val oldProbe = """test -f ${'$'}EXISTING_DEBIAN_ROOTFS/etc/debian_version && \" +
+        // Reuse a complete Debian installation already present on the rooted phone.
+        // The patch is idempotent and accepts both common bash locations.
+        val rootfsManager = file("src/main/java/com/metmc/os/runtime/RootfsManager.kt")
+        val rootfsText = rootfsManager.readText()
+        val oldRootfsProbe = """test -f ${'$'}EXISTING_DEBIAN_ROOTFS/etc/debian_version && \" +
                     \"test -x ${'$'}EXISTING_DEBIAN_ROOTFS/usr/bin/bash"""
-        val newProbe = """test -f ${'$'}EXISTING_DEBIAN_ROOTFS/etc/debian_version && \" +
+        val newRootfsProbe = """test -f ${'$'}EXISTING_DEBIAN_ROOTFS/etc/debian_version && \" +
                     \"(test -x ${'$'}EXISTING_DEBIAN_ROOTFS/usr/bin/bash || \" +
                     \"test -x ${'$'}EXISTING_DEBIAN_ROOTFS/bin/bash)"""
-        probeFiles.forEach { source ->
-            val text = source.readText()
-            if (oldProbe in text) source.writeText(text.replace(oldProbe, newProbe))
+        if (oldRootfsProbe in rootfsText) {
+            rootfsManager.writeText(rootfsText.replace(oldRootfsProbe, newRootfsProbe))
+        }
+
+        val chrootManager = file("src/main/java/com/metmc/os/runtime/ChrootManager.kt")
+        val chrootText = chrootManager.readText()
+        val oldChrootProbe = """test -f ${'$'}{existing.absolutePath}/etc/debian_version && " +
+                "test -x ${'$'}{existing.absolutePath}/usr/bin/bash && " +
+                "echo METMC_EXISTING_DEBIAN_ROOTFS"""
+        val newChrootProbe = """test -f ${'$'}{existing.absolutePath}/etc/debian_version && " +
+                "(test -x ${'$'}{existing.absolutePath}/usr/bin/bash || " +
+                "test -x ${'$'}{existing.absolutePath}/bin/bash) && " +
+                "echo METMC_EXISTING_DEBIAN_ROOTFS"""
+        if (oldChrootProbe in chrootText) {
+            chrootManager.writeText(chrootText.replace(oldChrootProbe, newChrootProbe))
         }
     }
 }
