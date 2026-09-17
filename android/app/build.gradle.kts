@@ -79,25 +79,74 @@ tasks.named("preBuild").configure {
         // Reuse a complete Debian installation already present on the rooted phone.
         // The patch is idempotent and accepts both common bash locations.
         val rootfsManager = file("src/main/java/com/metmc/os/runtime/RootfsManager.kt")
-        val rootfsText = rootfsManager.readText()
+        var rootfsText = rootfsManager.readText()
         val oldRootfsProbe = """test -f ${'$'}EXISTING_DEBIAN_ROOTFS/etc/debian_version && \" +
                     \"test -x ${'$'}EXISTING_DEBIAN_ROOTFS/usr/bin/bash"""
         val newRootfsProbe = """test -f ${'$'}EXISTING_DEBIAN_ROOTFS/etc/debian_version && \" +
                     \"(test -x ${'$'}EXISTING_DEBIAN_ROOTFS/usr/bin/bash || \" +
                     \"test -x ${'$'}EXISTING_DEBIAN_ROOTFS/bin/bash)"""
         if (oldRootfsProbe in rootfsText) {
-            rootfsManager.writeText(rootfsText.replace(oldRootfsProbe, newRootfsProbe))
+            rootfsText = rootfsText.replace(oldRootfsProbe, newRootfsProbe)
         }
+
+        // /data/local/linux/rootfs is outside the Android app sandbox. File.exists()
+        // against that path therefore gives false negatives even after apt succeeds.
+        // Run Phosh and terminal readiness probes through the already-rooted chroot.
+        val phoshOld = """        val schema = File(
+            rootfsDir,
+            \"usr/share/glib-2.0/schemas/org.gnome.settings-daemon.peripherals.gschema.xml\"
+        )
+        val svgLoader = File(
+            rootfsDir,
+            \"usr/lib/aarch64-linux-gnu/gdk-pixbuf-2.0/2.10.0/loaders/libpixbufloader-svg.so\"
+        )
+        if (schema.exists() && svgLoader.exists()) return true
+"""
+        val phoshNew = """        val runtimeCheck = chrootManager.execChroot(
+            \"test -f /usr/share/glib-2.0/schemas/org.gnome.settings-daemon.peripherals.gschema.xml && \" +
+                \"test -f /usr/lib/aarch64-linux-gnu/gdk-pixbuf-2.0/2.10.0/loaders/libpixbufloader-svg.so\"
+        )
+        if (runtimeCheck == 0) return true
+"""
+        if (phoshOld in rootfsText) rootfsText = rootfsText.replace(phoshOld, phoshNew)
+
+        val phoshResultOld = """        if (result == 0 && schema.exists() && svgLoader.exists()) {
+            Log.i(TAG, \"Phosh runtime schemas and SVG loader repaired\")
+            return true
+        }
+"""
+        val phoshResultNew = """        if (result == 0 && chrootManager.execChroot(
+                \"test -f /usr/share/glib-2.0/schemas/org.gnome.settings-daemon.peripherals.gschema.xml && \" +
+                    \"test -f /usr/lib/aarch64-linux-gnu/gdk-pixbuf-2.0/2.10.0/loaders/libpixbufloader-svg.so\"
+            ) == 0) {
+            Log.i(TAG, \"Phosh runtime schemas and SVG loader repaired\")
+            return true
+        }
+"""
+        if (phoshResultOld in rootfsText) rootfsText = rootfsText.replace(phoshResultOld, phoshResultNew)
+
+        val terminalOld = """        val console = File(rootfsDir, \"usr/bin/kgx\")
+        val legacyXterm = File(rootfsDir, \"usr/bin/xterm\")
+        val legacyGnomeTerminal = File(rootfsDir, \"usr/bin/gnome-terminal\")
+        if (console.exists() && !legacyXterm.exists() && !legacyGnomeTerminal.exists()) return true
+"""
+        val terminalNew = """        val terminalCheck = chrootManager.execChroot(
+            \"test -x /usr/bin/kgx && ! test -e /usr/bin/xterm && ! test -e /usr/bin/gnome-terminal\"
+        )
+        if (terminalCheck == 0) return true
+"""
+        if (terminalOld in rootfsText) rootfsText = rootfsText.replace(terminalOld, terminalNew)
+        rootfsManager.writeText(rootfsText)
 
         val chrootManager = file("src/main/java/com/metmc/os/runtime/ChrootManager.kt")
         val chrootText = chrootManager.readText()
-        val oldChrootProbe = """test -f ${'$'}{existing.absolutePath}/etc/debian_version && " +
-                "test -x ${'$'}{existing.absolutePath}/usr/bin/bash && " +
-                "echo METMC_EXISTING_DEBIAN_ROOTFS"""
-        val newChrootProbe = """test -f ${'$'}{existing.absolutePath}/etc/debian_version && " +
-                "(test -x ${'$'}{existing.absolutePath}/usr/bin/bash || " +
-                "test -x ${'$'}{existing.absolutePath}/bin/bash) && " +
-                "echo METMC_EXISTING_DEBIAN_ROOTFS"""
+        val oldChrootProbe = """test -f ${'$'}{existing.absolutePath}/etc/debian_version && \" +
+                \"test -x ${'$'}{existing.absolutePath}/usr/bin/bash && \" +
+                \"echo METMC_EXISTING_DEBIAN_ROOTFS"""
+        val newChrootProbe = """test -f ${'$'}{existing.absolutePath}/etc/debian_version && \" +
+                \"(test -x ${'$'}{existing.absolutePath}/usr/bin/bash || \" +
+                \"test -x ${'$'}{existing.absolutePath}/bin/bash) && \" +
+                \"echo METMC_EXISTING_DEBIAN_ROOTFS"""
         if (oldChrootProbe in chrootText) {
             chrootManager.writeText(chrootText.replace(oldChrootProbe, newChrootProbe))
         }
