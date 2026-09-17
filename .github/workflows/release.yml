@@ -12,14 +12,16 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
       - name: Checkout
         uses: actions/checkout@v4
       - name: Set up Java 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
+          cache: gradle
       - name: Set up Android SDK
         uses: android-actions/setup-android@v4
         with:
@@ -27,6 +29,7 @@ jobs:
       - name: Install Android SDK packages
         shell: bash
         run: |
+          set -euo pipefail
           sdkmanager --licenses < <(printf 'y\n%.0s' {1..50}) || true
           sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0" "ndk;27.0.12077973" "cmake;3.22.1"
       - name: Verify signing secrets
@@ -60,12 +63,26 @@ jobs:
           keyAlias=$METMC_KEY_ALIAS
           keyPassword=$METMC_KEY_PASSWORD
           EOF
-      - name: Build signed release
+      - name: Build signed release with dependency retries
         shell: bash
         run: |
-          set -e
-          cd android
-          ./gradlew clean assembleRelease -PMETMC_VERSION_CODE=12 -PMETMC_VERSION_NAME=8.5 --stacktrace
+          set +e
+          BUILD_STATUS=1
+          for attempt in 1 2 3 4; do
+            echo "========== RELEASE BUILD ATTEMPT $attempt/4 =========="
+            rm -f release-build.log
+            (cd android && ./gradlew --no-daemon --stacktrace --refresh-dependencies clean assembleRelease -PMETMC_VERSION_CODE=12 -PMETMC_VERSION_NAME=8.5) > release-build.log 2>&1
+            BUILD_STATUS=$?
+            if [ "$BUILD_STATUS" -eq 0 ]; then break; fi
+            if [ "$attempt" -lt 4 ]; then
+              echo "Release build attempt $attempt failed; clearing failed dependency metadata and retrying."
+              rm -rf "$HOME/.gradle/caches/modules-2/files-2.1" "$HOME/.gradle/caches/modules-2/metadata-*" 2>/dev/null || true
+              sleep 10
+            fi
+          done
+          grep -nEi 'error:|\.java:[0-9]+:|\.kt:[0-9]+:|Could not find|Could not GET|Could not resolve|Execution failed for task|FAILURE: Build failed|BUILD FAILED' release-build.log | head -160 || true
+          tail -160 release-build.log || true
+          exit $BUILD_STATUS
       - name: Prepare release files
         shell: bash
         run: |
@@ -102,6 +119,7 @@ jobs:
             metmc-os.apk
             metmc-os.apk.sha256
             metmc-update.json
+            release-build.log
       - name: Remove signing material
         if: always()
         shell: bash
