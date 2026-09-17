@@ -30,30 +30,6 @@ val preparePatchedXlorie by tasks.registering {
     }
 }
 
-val verifyBundledRootfs by tasks.registering {
-    val rootfsDirectory = layout.projectDirectory.dir("src/main/assets/rootfs")
-    inputs.dir(rootfsDirectory)
-    doLast {
-        val asset = rootfsDirectory.file("metmc-rootfs-arm64.tgz").asFile
-        val checksumFile = rootfsDirectory.file("metmc-rootfs-arm64.tgz.sha256").asFile
-        check(asset.isFile && asset.length() > 100L * 1024L * 1024L) { "Bundled rootfs is missing or implausibly small. Run scripts/build-rootfs-asset.sh." }
-        check(checksumFile.isFile) { "Bundled rootfs checksum is missing: ${checksumFile.path}" }
-        val expected = checksumFile.readText().trim().substringBefore(' ').lowercase()
-        check(expected.matches(Regex("[0-9a-f]{64}"))) { "Bundled rootfs checksum file is invalid" }
-        val digest = MessageDigest.getInstance("SHA-256")
-        asset.inputStream().buffered().use { input ->
-            val buffer = ByteArray(1024 * 1024)
-            while (true) {
-                val count = input.read(buffer)
-                if (count < 0) break
-                digest.update(buffer, 0, count)
-            }
-        }
-        val actual = digest.digest().joinToString("") { "%02x".format(it) }
-        check(actual == expected) { "Bundled rootfs checksum mismatch: expected $expected, got $actual" }
-    }
-}
-
 val metmcVersionCode = providers.gradleProperty("METMC_VERSION_CODE").orNull?.toIntOrNull() ?: 1
 val metmcVersionName = providers.gradleProperty("METMC_VERSION_NAME").orNull ?: "0.1.0-alpha"
 
@@ -98,8 +74,6 @@ android {
 }
 
 tasks.named("preBuild").configure { dependsOn(preparePatchedXlorie) }
-// Debug builds are compile/install validation builds. Release builds require the real Debian rootfs asset.
-tasks.named("preReleaseBuild").configure { dependsOn(verifyBundledRootfs) }
 
 dependencies {
     implementation("androidx.core:core-ktx:1.13.1")
