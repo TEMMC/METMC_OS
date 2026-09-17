@@ -50,30 +50,6 @@ jobs:
           test -d "$ANDROID_HOME/ndk/27.0.12077973"
           test -d "$ANDROID_HOME/cmake/3.22.1"
 
-      - name: Prepare Gradle
-        shell: bash
-        run: |
-          set -euo pipefail
-          GRADLE_VERSION=8.11.1
-          GRADLE_DIR="$RUNNER_TEMP/gradle-$GRADLE_VERSION"
-          GRADLE_ZIP="$RUNNER_TEMP/gradle-$GRADLE_VERSION-bin.zip"
-          GRADLE_URL="https://services.gradle.org/distributions/gradle-$GRADLE_VERSION-bin.zip"
-          if [ ! -x "$GRADLE_DIR/bin/gradle" ]; then
-            rm -f "$GRADLE_ZIP"
-            for attempt in 1 2 3 4 5; do
-              curl --fail --location --retry 3 --retry-delay 5 --connect-timeout 20 --max-time 180 -o "$GRADLE_ZIP" "$GRADLE_URL" && break
-              rm -f "$GRADLE_ZIP"
-              [ "$attempt" -lt 5 ] && sleep 10
-            done
-            test -s "$GRADLE_ZIP"
-            rm -rf "$GRADLE_DIR" "$RUNNER_TEMP/gradle-extract"
-            mkdir -p "$RUNNER_TEMP/gradle-extract"
-            unzip -q "$GRADLE_ZIP" -d "$RUNNER_TEMP/gradle-extract"
-            mv "$RUNNER_TEMP/gradle-extract/gradle-$GRADLE_VERSION" "$GRADLE_DIR"
-          fi
-          echo "$GRADLE_DIR/bin" >> "$GITHUB_PATH"
-          "$GRADLE_DIR/bin/gradle" --version
-
       - name: Verify Android project
         shell: bash
         run: |
@@ -81,23 +57,28 @@ jobs:
           test -f android/settings.gradle.kts
           test -f android/build.gradle.kts
           test -f android/app/build.gradle.kts
-          echo "NativOS-derived Android project files verified."
+          test -x android/gradlew
+          echo "METMC Android project files verified."
 
-      - name: Build METMC OS with retries
+      - name: Build METMC OS with dependency retries
         shell: bash
         run: |
           set +e
           BUILD_STATUS=1
-          for attempt in 1 2 3; do
-            echo "========== GRADLE BUILD ATTEMPT $attempt/3 =========="
+          for attempt in 1 2 3 4; do
+            echo "========== GRADLE BUILD ATTEMPT $attempt/4 =========="
             rm -f build.log
-            (cd android && gradle clean assembleDebug --stacktrace --no-daemon) > build.log 2>&1
+            (cd android && ./gradlew --no-daemon --stacktrace --refresh-dependencies clean assembleDebug) > build.log 2>&1
             BUILD_STATUS=$?
             if [ "$BUILD_STATUS" -eq 0 ]; then break; fi
-            [ "$attempt" -lt 3 ] && sleep 15
+            if [ "$attempt" -lt 4 ]; then
+              echo "Gradle attempt $attempt failed; clearing only failed dependency metadata and retrying."
+              rm -rf "$HOME/.gradle/caches/modules-2/files-2.1" "$HOME/.gradle/caches/modules-2/metadata-*" 2>/dev/null || true
+              sleep 10
+            fi
           done
-          grep -nEi 'error:|\.java:[0-9]+:|\.kt:[0-9]+:|Execution failed for task|FAILURE: Build failed|BUILD FAILED' build.log | head -100 || true
-          tail -120 build.log || true
+          grep -nEi 'error:|\.java:[0-9]+:|\.kt:[0-9]+:|Could not find|Could not GET|Could not resolve|Execution failed for task|FAILURE: Build failed|BUILD FAILED' build.log | head -160 || true
+          tail -160 build.log || true
           exit $BUILD_STATUS
 
       - name: Upload build log
