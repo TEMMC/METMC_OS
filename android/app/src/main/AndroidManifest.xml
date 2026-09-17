@@ -146,7 +146,11 @@
         <service
             android:name=".bridge.BridgeService"
             android:foregroundServiceType="specialUse"
-            android:exported="false" />
+            android:exported="false">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="METMC OS Android-to-Linux hardware and desktop bridge" />
+        </service>
 
     </application>
 
