@@ -268,7 +268,16 @@ class MetmcFileManagerView(private val context: Context) : LinearLayout(context)
             val n = input.text.toString().trim()
             if (n.isBlank() || n.contains('/') || n == "." || n == "..") { Toast.makeText(context, "Invalid folder name", Toast.LENGTH_SHORT).show(); return@setPositiveButton }
             val base = currentPath() ?: return@setPositiveButton
-            Thread { runRoot(if (tab == Tab.LINUX) "chroot /data/local/linux/rootfs /bin/mkdir -p ${q(\"$base/$n\")}" else "mkdir -p ${q(\"$base/$n\")}"); (context as? Activity)?.runOnUiThread { refresh() } }.start()
+            Thread {
+                val target = "$base/$n"
+                val command = if (tab == Tab.LINUX) {
+                    "chroot /data/local/linux/rootfs /bin/mkdir -p ${q(target)}"
+                } else {
+                    "mkdir -p ${q(target)}"
+                }
+                runRoot(command)
+                (context as? Activity)?.runOnUiThread { refresh() }
+            }.start()
         }.show()
     }
 
