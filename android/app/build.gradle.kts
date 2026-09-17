@@ -73,7 +73,28 @@ android {
     androidResources { noCompress += "tgz" }
 }
 
-tasks.named("preBuild").configure { dependsOn(preparePatchedXlorie) }
+tasks.named("preBuild").configure {
+    dependsOn(preparePatchedXlorie)
+    doLast {
+        // The phone may already contain a complete Debian tree installed by
+        // Termux/debootstrap at /data/local/linux/rootfs. Keep that installation
+        // reusable instead of forcing a new download. This build-time patch is
+        // idempotent and also accepts Debian layouts where bash is /bin/bash.
+        val probeFiles = listOf(
+            file("src/main/java/com/metmc/os/runtime/RootfsManager.kt"),
+            file("src/main/java/com/metmc/os/runtime/ChrootManager.kt")
+        )
+        val oldProbe = """test -f ${'$'}EXISTING_DEBIAN_ROOTFS/etc/debian_version && \" +
+                    \"test -x ${'$'}EXISTING_DEBIAN_ROOTFS/usr/bin/bash"""
+        val newProbe = """test -f ${'$'}EXISTING_DEBIAN_ROOTFS/etc/debian_version && \" +
+                    \"(test -x ${'$'}EXISTING_DEBIAN_ROOTFS/usr/bin/bash || \" +
+                    \"test -x ${'$'}EXISTING_DEBIAN_ROOTFS/bin/bash)"""
+        probeFiles.forEach { source ->
+            val text = source.readText()
+            if (oldProbe in text) source.writeText(text.replace(oldProbe, newProbe))
+        }
+    }
+}
 
 dependencies {
     implementation("androidx.core:core-ktx:1.13.1")
