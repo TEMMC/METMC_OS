@@ -38,7 +38,8 @@ class ChrootManager(private val context: Context) {
             "test -d ${existing.absolutePath} && " +
                 "test -f ${existing.absolutePath}/etc/os-release && " +
                 "test -f ${existing.absolutePath}/etc/debian_version && " +
-                "test -x ${existing.absolutePath}/usr/bin/bash && " +
+                "(test -x ${existing.absolutePath}/usr/bin/bash || " +
+                "test -x ${existing.absolutePath}/bin/bash) && " +
                 "echo METMC_EXISTING_DEBIAN_ROOTFS"
         )
         if (!probe.contains("METMC_EXISTING_DEBIAN_ROOTFS")) return false
@@ -65,7 +66,9 @@ class ChrootManager(private val context: Context) {
 
     fun hasRoot(): Boolean = rootShell.hasRoot()
 
-    fun isRootfsReady(): Boolean = File(rootfsDir, "usr/bin/bash").exists()
+    fun isRootfsReady(): Boolean =
+        File(rootfsDir, "usr/bin/bash").exists() ||
+        File(rootfsDir, "bin/bash").exists()
 
     fun isPhoshInstalled(): Boolean =
         File(rootfsDir, "usr/bin/phosh-session").exists() ||

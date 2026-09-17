@@ -39,7 +39,8 @@ class RootfsManager(private val context: Context) {
     fun getInstalledDistro(): String =
         if (configFile.exists()) configFile.readText().trim() else ""
 
-    fun getRootfsPath(): String = rootfsDir.absolutePath
+    fun getRootfsPath(): String =
+        if (hasExistingDebianRootfs()) EXISTING_DEBIAN_ROOTFS else rootfsDir.absolutePath
 
     fun isRootfsReady(): Boolean =
         (rootfsDir.exists() && File(rootfsDir, "bin").exists() &&
@@ -58,7 +59,8 @@ class RootfsManager(private val context: Context) {
                 "test -d $EXISTING_DEBIAN_ROOTFS && " +
                     "test -f $EXISTING_DEBIAN_ROOTFS/etc/os-release && " +
                     "test -f $EXISTING_DEBIAN_ROOTFS/etc/debian_version && " +
-                    "test -x $EXISTING_DEBIAN_ROOTFS/usr/bin/bash"
+                    "(test -x $EXISTING_DEBIAN_ROOTFS/usr/bin/bash || " +
+                    "test -x $EXISTING_DEBIAN_ROOTFS/bin/bash)"
             ).redirectErrorStream(true).start()
             process.waitFor() == 0
         } catch (error: Throwable) {
@@ -69,7 +71,17 @@ class RootfsManager(private val context: Context) {
 
     fun isSetupComplete(): Boolean = setupCompleteFile.exists()
 
-    fun isFlatpakInstalled(): Boolean = File(rootfsDir, "usr/bin/flatpak").exists()
+    fun isFlatpakInstalled(): Boolean {
+        if (hasExistingDebianRootfs()) {
+            return runCatching {
+                ProcessBuilder(
+                    "su", "-c",
+                    "test -x $EXISTING_DEBIAN_ROOTFS/usr/bin/flatpak"
+                ).start().waitFor() == 0
+            }.getOrDefault(false)
+        }
+        return File(rootfsDir, "usr/bin/flatpak").exists()
+    }
 
     /** Copy the production rootfs bundled in the signed APK into the staging area. */
     fun stageBundledRootfs(onProgress: (progress: Double, status: String) -> Unit): Boolean {
@@ -133,76 +145,86 @@ class RootfsManager(private val context: Context) {
      * immediately and the X11 cursor visibly flickers in a restart loop.
      */
     fun ensurePhoshRuntime(chrootManager: ChrootManager): Boolean {
-        val schema = File(
-            rootfsDir,
-            "usr/share/glib-2.0/schemas/org.gnome.settings-daemon.peripherals.gschema.xml"
-        )
-        val svgLoader = File(
-            rootfsDir,
-            "usr/lib/aarch64-linux-gnu/gdk-pixbuf-2.0/2.10.0/loaders/libpixbufloader-svg.so"
-        )
-        if (schema.exists() && svgLoader.exists()) return true
+        val runtimeCheck = """
+            test -f /usr/share/glib-2.0/schemas/org.gnome.settings-daemon.peripherals.gschema.xml &&
+            test -f /usr/lib/aarch64-linux-gnu/gdk-pixbuf-2.0/2.10.0/loaders/libpixbufloader-svg.so
+        """.trimIndent()
+
+        // IMPORTANT: the active Debian rootfs may be the device-wide
+        // /data/local/linux/rootfs rather than app-private filesDir/rootfs.
+        // Always validate the runtime from inside the actual chroot.
+        if (chrootManager.execChroot(runtimeCheck) == 0) {
+            Log.i(TAG, "Phosh runtime components already ready")
+            return true
+        }
 
         Log.w(TAG, "Phosh runtime components missing; repairing interrupted provisioning")
+
         val result = chrootManager.execChroot(
             """
                 dpkg --configure -a || true
                 apt-get update || exit 1
-                TMPDIR=/tmp DEBIAN_FRONTEND=noninteractive TZ=Etc/UTC \
-                    apt-get install -y --no-install-recommends \
-                    gnome-settings-daemon-common librsvg2-common || exit 1
+                TMPDIR=/tmp DEBIAN_FRONTEND=noninteractive TZ=Etc/UTC                     apt-get install -y --no-install-recommends                     gnome-settings-daemon-common librsvg2-common || exit 1
                 glib-compile-schemas /usr/share/glib-2.0/schemas || exit 1
-                GDK_LOADER=${'$'}(find /usr/lib -name gdk-pixbuf-query-loaders | head -n 1)
-                if [ -x "${'$'}GDK_LOADER" ]; then
-                    "${'$'}GDK_LOADER" > "${'$'}(dirname "${'$'}GDK_LOADER")/2.10.0/loaders.cache" || exit 1
+                GDK_LOADER=$(find /usr/lib -name gdk-pixbuf-query-loaders | head -n 1)
+                if [ -x "$GDK_LOADER" ]; then
+                    CACHE_DIR=$(dirname "$GDK_LOADER")/2.10.0
+                    mkdir -p "$CACHE_DIR"
+                    "$GDK_LOADER" > "$CACHE_DIR/loaders.cache" || exit 1
                 fi
                 gtk-update-icon-cache -f -t /usr/share/icons/hicolor 2>/dev/null || true
                 gtk-update-icon-cache -f -t /usr/share/icons/Adwaita 2>/dev/null || true
-                test -f /usr/share/glib-2.0/schemas/org.gnome.settings-daemon.peripherals.gschema.xml
-                test -f /usr/lib/aarch64-linux-gnu/gdk-pixbuf-2.0/2.10.0/loaders/libpixbufloader-svg.so
+                $runtimeCheck
             """.trimIndent()
         )
-        if (result == 0 && schema.exists() && svgLoader.exists()) {
-            Log.i(TAG, "Phosh runtime schemas and SVG loader repaired")
+
+        val verified = result == 0 && chrootManager.execChroot(runtimeCheck) == 0
+
+        if (verified) {
+            Log.i(TAG, "Phosh runtime schemas and SVG loader verified inside chroot")
             return true
         }
-        Log.e(TAG, "Could not repair Phosh runtime components (exit $result)")
+
+        Log.e(TAG, "Could not repair/verify Phosh runtime components (exit $result)")
         return false
     }
 
     /** Install the adaptive Wayland terminal and remove the two legacy XTerm launchers. */
     fun ensureProfessionalTerminal(chrootManager: ChrootManager): Boolean {
-        val console = File(rootfsDir, "usr/bin/kgx")
-        val legacyXterm = File(rootfsDir, "usr/bin/xterm")
-        val legacyGnomeTerminal = File(rootfsDir, "usr/bin/gnome-terminal")
-        if (console.exists() && !legacyXterm.exists() && !legacyGnomeTerminal.exists()) return true
+        val ready = chrootManager.execChroot(
+            """
+                command -v kgx >/dev/null 2>&1 &&
+                ! test -e /usr/bin/xterm &&
+                ! test -e /usr/bin/gnome-terminal
+            """.trimIndent()
+        ) == 0
+
+        if (ready) return true
 
         val result = chrootManager.execChroot(
             """
-                # A previously interrupted optional package must not prevent the
-                # terminal migration from repairing the installation.
                 dpkg --configure -a || true
                 if ! command -v kgx >/dev/null 2>&1; then
                     apt-get update || exit 1
-                    TMPDIR=/tmp DEBIAN_FRONTEND=noninteractive TZ=Etc/UTC \
-                        apt-get install -y --no-install-recommends gnome-console || exit 1
+                    TMPDIR=/tmp DEBIAN_FRONTEND=noninteractive TZ=Etc/UTC                         apt-get install -y --no-install-recommends gnome-console || exit 1
                 fi
-                # XTerm and UXTerm are supplied by the same package. Keep the proven
-                # adaptive Console installed before removing either legacy terminal.
-                rm -f /usr/share/applications/debian-xterm.desktop \
-                    /usr/share/applications/debian-uxterm.desktop \
-                    /usr/share/applications/org.gnome.Terminal.desktop
-                TMPDIR=/tmp DEBIAN_FRONTEND=noninteractive \
-                    apt-get purge -y xterm gnome-terminal gnome-terminal-data || exit 1
+                rm -f /usr/share/applications/debian-xterm.desktop                     /usr/share/applications/debian-uxterm.desktop                     /usr/share/applications/org.gnome.Terminal.desktop
+                TMPDIR=/tmp DEBIAN_FRONTEND=noninteractive                     apt-get purge -y xterm gnome-terminal gnome-terminal-data || true
                 update-desktop-database /usr/share/applications 2>/dev/null || true
+                command -v kgx >/dev/null 2>&1
             """.trimIndent()
         )
-        if (result == 0) {
-            Log.i(TAG, "GNOME Console ready; legacy terminal launchers removed")
+
+        val verified = result == 0 && chrootManager.execChroot(
+            "command -v kgx >/dev/null 2>&1"
+        ) == 0
+
+        if (verified) {
+            Log.i(TAG, "GNOME Console ready")
         } else {
             Log.w(TAG, "Could not provision GNOME Console (exit $result)")
         }
-        return result == 0
+        return verified
     }
 
     /** Add or repair the signed per-user Flathub remote used by GNOME Software. */
