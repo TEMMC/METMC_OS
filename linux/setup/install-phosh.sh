@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ═══════════════════════════════════════════════════════════════
-#  NativOS — Install Phosh Desktop Environment in Chroot
+#  METMC OS — Install Phosh Desktop Environment in Chroot
 #
 #  Run this inside the chroot Ubuntu filesystem to install
 #  Phosh (the GNOME Phone Shell) and all required dependencies.
@@ -11,7 +11,7 @@
 set -e
 
 echo "╔══════════════════════════════════════════╗"
-echo "║       NativOS — Installing Phosh         ║"
+echo "║       METMC OS — Installing Phosh         ║"
 echo "╚══════════════════════════════════════════╝"
 echo ""
 
@@ -112,12 +112,12 @@ echo "[8/8] Cleaning up..."
 apt-get clean
 rm -rf /var/lib/apt/lists/*
 
-# ── Create NativOS config directory ──
-mkdir -p /etc/nativOS
+# ── Create METMC OS config directory ──
+mkdir -p /etc/metmc
 
 echo ""
 echo "╔══════════════════════════════════════════╗"
 echo "║       Phosh installation complete!       ║"
 echo "╚══════════════════════════════════════════╝"
 echo ""
-echo "Next: run install-bridge.sh to set up the NativOS hardware bridge"
+echo "Next: run install-bridge.sh to set up the METMC OS hardware bridge"

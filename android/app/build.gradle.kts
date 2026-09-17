@@ -18,7 +18,7 @@ val preparePatchedXlorie by tasks.registering {
         "src/main/xlorie-upstream/arm64-v8a/libXlorie.so"
     )
     val patched = layout.buildDirectory.file(
-        "generated/nativosJniLibs/arm64-v8a/libXlorie.so"
+        "generated/metmcJniLibs/arm64-v8a/libXlorie.so"
     )
     inputs.file(upstream)
     outputs.file(patched)
@@ -57,8 +57,8 @@ val verifyBundledRootfs by tasks.registering {
     inputs.dir(rootfsDirectory)
 
     doLast {
-        val asset = rootfsDirectory.file("nativos-rootfs-arm64.tgz").asFile
-        val checksumFile = rootfsDirectory.file("nativos-rootfs-arm64.tgz.sha256").asFile
+        val asset = rootfsDirectory.file("metmc-rootfs-arm64.tgz").asFile
+        val checksumFile = rootfsDirectory.file("metmc-rootfs-arm64.tgz.sha256").asFile
         check(asset.isFile && asset.length() > 100L * 1024L * 1024L) {
             "Bundled rootfs is missing or implausibly small. Run scripts/build-rootfs-asset.sh."
         }
@@ -86,11 +86,11 @@ val verifyBundledRootfs by tasks.registering {
 }
 
 android {
-    namespace = "com.nativOS"
+    namespace = "com.metmc"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.nativOS"
+        applicationId = "com.metmc.os"
         minSdk = 28  // Android 9+ (modern root tools, Camera2 stable)
         targetSdk = 35
         versionCode = 1
@@ -104,7 +104,7 @@ android {
     sourceSets {
         getByName("main") {
             java.srcDirs("src/main/java", "src/main/kotlin")
-            jniLibs.srcDir(layout.buildDirectory.dir("generated/nativosJniLibs"))
+            jniLibs.srcDir(layout.buildDirectory.dir("generated/metmcJniLibs"))
         }
     }
 

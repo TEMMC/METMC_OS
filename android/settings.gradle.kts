@@ -14,5 +14,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "NativOS"
+rootProject.name = "METMC OS"
 include(":app")

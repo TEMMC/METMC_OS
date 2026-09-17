@@ -1,5 +1,5 @@
 #!/system/bin/sh
-# NativOS Boot Animation — Magisk Module Install Script
+# METMC OS Boot Animation — Magisk Module Install Script
 #
 # This module replaces /system/media/bootanimation.zip systemlessly.
 # The original boot animation is preserved and restored if the module is removed.
@@ -7,7 +7,7 @@
 MODPATH="${0%/*}"
 
 ui_print "╔══════════════════════════════════════════╗"
-ui_print "║     NativOS Boot Animation Installer     ║"
+ui_print "║     METMC OS Boot Animation Installer     ║"
 ui_print "╚══════════════════════════════════════════╝"
 ui_print ""
 

@@ -666,7 +666,7 @@ public class TouchInputHandler {
                 return true;
             }
 
-            // NativOS uses simulated touch so taps work reliably through Phoc's
+            // METMC OS uses simulated touch so taps work reliably through Phoc's
             // nested X11 backend. On a phone, a one-finger swipe must behave like
             // a native touchscreen scroll rather than requiring two fingers.
             // Preserve long-press dragging for sliders and movable controls.

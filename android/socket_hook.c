@@ -37,7 +37,7 @@ int connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen) {
                 socklen_t new_len = offsetof(struct sockaddr_un, sun_path)
                                     + 1 + strlen(abstract_path);
 
-                fprintf(stderr, "NativOS socket_hook: Redirecting %s -> @%s\n",
+                fprintf(stderr, "METMC OS socket_hook: Redirecting %s -> @%s\n",
                         un->sun_path, abstract_path);
 
                 return real_connect(sockfd, (struct sockaddr *)&new_addr, new_len);

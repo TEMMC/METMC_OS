@@ -12,7 +12,7 @@ public class CmdEntryPoint {
     public native ParcelFileDescriptor getLogcatOutput();
     private static native boolean connected();
 
-    // Called by the native server when a client knocks on the X11 socket. NativOS
+    // Called by the native server when a client knocks on the X11 socket. METMC OS
     // obtains the connection through its bound service, so no broadcast is needed.
     @SuppressWarnings("unused")
     private void sendBroadcast() {}

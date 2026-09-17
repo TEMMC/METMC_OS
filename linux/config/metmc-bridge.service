@@ -1,0 +1,15 @@
+[Unit]
+Description=METMC OS Hardware Bridge Client
+Documentation=https://github.com/orailnoor/METMC OS
+After=network.target dbus.service
+Wants=dbus.service
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/metmc-bridge --socket /run/metmc/bridge.sock
+Restart=always
+RestartSec=3
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target
