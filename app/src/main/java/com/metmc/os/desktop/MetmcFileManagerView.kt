@@ -129,7 +129,7 @@ class MetmcFileManagerView(private val context: Context) : LinearLayout(context)
     private fun load(target: String, linux: Boolean) {
         Thread {
             val safeTarget = q(target)
-            val scan = "find $safeTarget -mindepth 1 -maxdepth 1 -print 2>/dev/null | while IFS= read -r p; do if [ -d \"$p\" ]; then printf 'd\\t%s\\t0\\n' \"$p\"; elif [ -f \"$p\" ]; then s=\$(stat -c %s \"$p\" 2>/dev/null || echo 0); printf 'f\\t%s\\t%s\\n' \"$p\" \"\$s\"; else printf 'o\\t%s\\t0\\n' \"$p\"; fi; done"
+            val scan = """find $safeTarget -mindepth 1 -maxdepth 1 -print 2>/dev/null | while IFS= read -r ${'$'}p; do if [ -d "${'$'}p" ]; then printf 'd\t%s\t0\n' "${'$'}p"; elif [ -f "${'$'}p" ]; then s=${'$'}(stat -c %s "${'$'}p" 2>/dev/null || echo 0); printf 'f\t%s\t%s\n' "${'$'}p" "${'$'}s"; else printf 'o\t%s\t0\n' "${'$'}p"; fi; done"""
             val cmd = if (linux) {
                 "chroot /data/local/linux/rootfs /bin/sh -c ${q(scan)}"
             } else scan
