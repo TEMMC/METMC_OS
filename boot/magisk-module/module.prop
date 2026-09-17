@@ -1,6 +1,0 @@
-id=metmc_boot_animation
-name=METMC OS Boot Animation
-version=1.0.0
-versionCode=1
-author=orailnoor
-description=Replaces the Android boot animation with the METMC OS loading screen. Systemless — safe to remove via Magisk.
