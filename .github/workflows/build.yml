@@ -1,0 +1,175 @@
+name: Build METMC OS
+
+on:
+  push:
+    branches:
+      - main
+      - x11-native
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+
+      - name: Set up Android SDK tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          export ANDROID_HOME="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          export ANDROID_SDK_ROOT="$ANDROID_HOME"
+          echo "ANDROID_HOME=$ANDROID_HOME" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT" >> "$GITHUB_ENV"
+
+          SDKMANAGER=""
+          for candidate in \
+            "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" \
+            "$ANDROID_HOME/cmdline-tools/16.0/bin/sdkmanager" \
+            "$ANDROID_HOME/cmdline-tools/15.0/bin/sdkmanager" \
+            "$ANDROID_HOME/cmdline-tools/12.0/bin/sdkmanager"; do
+            if [ -x "$candidate" ]; then
+              SDKMANAGER="$candidate"
+              break
+            fi
+          done
+
+          if [ -z "$SDKMANAGER" ]; then
+            echo "ERROR: Android sdkmanager was not found."
+            find "$ANDROID_HOME/cmdline-tools" -maxdepth 3 -type f -name sdkmanager -print 2>/dev/null || true
+            exit 1
+          fi
+
+          echo "Using sdkmanager: $SDKMANAGER"
+          "$SDKMANAGER" --version
+          printf 'y\n%.0s' {1..50} | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" \
+            "platform-tools" \
+            "platforms;android-29" \
+            "build-tools;34.0.0" \
+            "ndk;27.0.12077973" \
+            "cmake;3.22.1"
+
+          test -d "$ANDROID_HOME/platforms/android-29"
+          test -d "$ANDROID_HOME/build-tools/34.0.0"
+          test -d "$ANDROID_HOME/ndk/27.0.12077973"
+          test -d "$ANDROID_HOME/cmake/3.22.1"
+          echo "Android SDK packages verified."
+
+      - name: Prepare Gradle
+        shell: bash
+        run: |
+          set -euo pipefail
+          GRADLE_VERSION=8.11.1
+          GRADLE_DIR="$RUNNER_TEMP/gradle-$GRADLE_VERSION"
+          GRADLE_ZIP="$RUNNER_TEMP/gradle-$GRADLE_VERSION-bin.zip"
+          GRADLE_URL="https://services.gradle.org/distributions/gradle-$GRADLE_VERSION-bin.zip"
+
+          if [ ! -x "$GRADLE_DIR/bin/gradle" ]; then
+            rm -f "$GRADLE_ZIP"
+            for attempt in 1 2 3 4 5; do
+              echo "Downloading Gradle $GRADLE_VERSION (attempt $attempt/5)..."
+              if curl --fail --location --retry 3 --retry-delay 5 --connect-timeout 20 --max-time 180 -o "$GRADLE_ZIP" "$GRADLE_URL"; then
+                break
+              fi
+              rm -f "$GRADLE_ZIP"
+              [ "$attempt" -lt 5 ] && sleep 10
+            done
+            test -s "$GRADLE_ZIP"
+            rm -rf "$GRADLE_DIR" "$RUNNER_TEMP/gradle-extract"
+            mkdir -p "$RUNNER_TEMP/gradle-extract"
+            unzip -q "$GRADLE_ZIP" -d "$RUNNER_TEMP/gradle-extract"
+            mv "$RUNNER_TEMP/gradle-extract/gradle-$GRADLE_VERSION" "$GRADLE_DIR"
+            rm -rf "$RUNNER_TEMP/gradle-extract"
+          fi
+
+          echo "$GRADLE_DIR/bin" >> "$GITHUB_PATH"
+          "$GRADLE_DIR/bin/gradle" --version
+
+      - name: Verify Android project
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f settings.gradle
+          test -f build.gradle
+          test -f app/build.gradle || test -f app/build.gradle.kts
+          echo "Android project files verified."
+
+      - name: Build METMC OS with retries
+        shell: bash
+        run: |
+          set +e
+          BUILD_STATUS=1
+          for attempt in 1 2 3; do
+            echo "========== GRADLE BUILD ATTEMPT $attempt/3 =========="
+            rm -f build.log
+            gradle clean assembleDebug --stacktrace --no-daemon > build.log 2>&1
+            BUILD_STATUS=$?
+            if [ "$BUILD_STATUS" -eq 0 ]; then
+              echo "Gradle build succeeded on attempt $attempt."
+              break
+            fi
+            echo "Gradle build failed on attempt $attempt."
+            [ "$attempt" -lt 3 ] && sleep 15
+          done
+
+          echo "========== BUILD ERROR LOCATIONS =========="
+          grep -nEi 'error:|\.java:[0-9]+:|\.kt:[0-9]+:|Execution failed for task|FAILURE: Build failed|BUILD FAILED' build.log | head -100 || true
+          echo ""
+          echo "========== FIRST ERROR CONTEXT =========="
+          ERROR_LINE=$(grep -nEi 'error:|\.java:[0-9]+:|\.kt:[0-9]+:' build.log | head -1 | cut -d: -f1)
+          if [ -n "$ERROR_LINE" ]; then
+            START=$((ERROR_LINE - 15)); [ "$START" -lt 1 ] && START=1
+            END=$((ERROR_LINE + 60))
+            sed -n "${START},${END}p" build.log
+          else
+            grep -nEi -B10 -A30 'Execution failed for task|What went wrong|Caused by:' build.log | head -200 || true
+          fi
+          echo ""
+          echo "========== FAILED TASK =========="
+          grep -nE '> Task .* FAILED|Execution failed for task' build.log | head -30 || true
+          echo ""
+          echo "========== LAST 120 LINES =========="
+          tail -120 build.log || true
+          exit $BUILD_STATUS
+
+      - name: Upload build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: METMC-OS-build-log
+          path: build.log
+          if-no-files-found: warn
+
+      - name: Verify APK output
+        if: success()
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK_COUNT=$(find app/build/outputs/apk/debug -maxdepth 1 -type f -name '*.apk' | wc -l)
+          test "$APK_COUNT" -gt 0
+          find app/build/outputs/apk/debug -maxdepth 1 -type f -name '*.apk' -print
+
+      - name: Upload APK
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: METMC-OS-debug
+          path: app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error

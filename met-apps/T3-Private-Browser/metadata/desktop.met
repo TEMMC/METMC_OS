@@ -1,0 +1,11 @@
+[Desktop Entry]
+Name=T3 Private Browser
+Type=METMC-Native
+Id=com.metmc.t3browser
+Entry=com.metmc.os.apps.t3.T3PrivateBrowserView
+Icon=icons/t3-browser
+Categories=Network;WebBrowser;
+Window=true
+Server=false
+X11=false
+VNC=false

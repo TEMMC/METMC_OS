@@ -1,0 +1,66 @@
+name: Repair METMC file manager build
+
+on:
+  push:
+    branches:
+      - x11-native
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Repair malformed Kotlin blocks
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('app/src/main/java/com/metmc/os/desktop/MetmcFileManagerView.kt')
+          lines = p.read_text().splitlines()
+          out = []
+          changed = False
+          for line in lines:
+              if 'val scan = "find $safeTarget' in line:
+                  indent = line[:len(line) - len(line.lstrip())]
+                  out.append(indent + '''val scan = """find $safeTarget -mindepth 1 -maxdepth 1 -print 2>/dev/null | while IFS= read -r ${'$'}p; do if [ -d \"${'$'}p\" ]; then printf 'd\\t%s\\t0\\n' \"${'$'}p\"; elif [ -f \"${'$'}p\" ]; then s=${'$'}(stat -c %s \"${'$'}p\" 2>/dev/null || echo 0); printf 'f\\t%s\\t%s\\n' \"${'$'}p\" \"${'$'}s\"; else printf 'o\\t%s\\t0\\n' \"${'$'}p\"; fi; done"""''')
+                  changed = True
+              elif 'Thread { runRoot(if (tab == Tab.LINUX)' in line:
+                  indent = line[:len(line) - len(line.lstrip())]
+                  out.extend([
+                      indent + 'Thread {',
+                      indent + '    val target = "$base/$n"',
+                      indent + '    val command = if (tab == Tab.LINUX) {',
+                      indent + '        "chroot /data/local/linux/rootfs /bin/mkdir -p ${q(target)}"',
+                      indent + '    } else {',
+                      indent + '        "mkdir -p ${q(target)}"',
+                      indent + '    }',
+                      indent + '    runRoot(command)',
+                      indent + '    (context as? Activity)?.runOnUiThread { refresh() }',
+                      indent + '}.start()'
+                  ])
+                  changed = True
+              else:
+                  out.append(line)
+          if changed:
+              p.write_text('\n'.join(out) + '\n')
+          print('File manager repair applied:', changed)
+          PY
+
+      - name: Commit repair
+        shell: bash
+        run: |
+          if git diff --quiet; then
+            echo "No repair needed."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/src/main/java/com/metmc/os/desktop/MetmcFileManagerView.kt
+          git commit -m "Fix METMC file manager shell variable escaping"
+          git push

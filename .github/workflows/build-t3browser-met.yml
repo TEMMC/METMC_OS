@@ -1,0 +1,48 @@
+name: Build T3 Browser .met Package
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Build T3 Browser APK
+        run: ./gradlew :t3browser-app:assembleRelease
+
+      - name: Package .met
+        run: |
+          mkdir -p met-package/android
+          cp t3browser-app/build/outputs/apk/release/t3browser-app-release-unsigned.apk met-package/android/app.apk
+          cat > met-package/manifest.json << 'EOS'
+          {
+            "id": "com.temmc.t3browser",
+            "name": "T3 Private Browser",
+            "version": "1.0.0",
+            "author": "Tinotenda Enock Mapfumo (Dr TEMMC)",
+            "description": "Private browser with tracker blocking, built for METMC OS.",
+            "platforms": {
+              "metmc_os": { "type": "apk", "entry": "android/app.apk" },
+              "android": { "type": "apk", "entry": "android/app.apk" }
+            }
+          }
+          EOS
+          cd met-package
+          zip -r ../t3-private-browser.met .
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: t3browser-latest
+          name: T3 Private Browser (.met package)
+          files: t3-private-browser.met
+          body: "Install with: met install t3-private-browser.met"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

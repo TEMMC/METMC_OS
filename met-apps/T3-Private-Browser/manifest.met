@@ -1,0 +1,13 @@
+name=T3 Private Browser
+id=com.metmc.t3browser
+version=1.0.0
+type=metmc-native
+architecture=arm64
+entrypoint=com.metmc.os.apps.t3.T3PrivateBrowserView
+desktop=true
+window=true
+server=false
+x11=false
+vnc=false
+permissions=network,storage,downloads
+category=Network;WebBrowser

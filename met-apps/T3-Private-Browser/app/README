@@ -1,0 +1,6 @@
+T3 Private Browser
+Native METMC desktop application.
+Rendered directly as a METMC View inside DesktopWindow.
+No X server.
+No VNC.
+No external display server.

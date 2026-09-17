@@ -8,7 +8,7 @@
   A touch-first Linux desktop for rooted ARM64 Android phones.
 </p>
 
-METMC OS runs Ubuntu and the Phosh/Wayland mobile desktop in a private chroot while Android continues to provide the kernel, drivers, radio, camera stack, and other device-specific hardware support. The display server and Linux root filesystem are bundled in one APK; no separate Termux:X11 application is required.
+METMC OS runs Debian Bookworm and the Phosh/Wayland mobile desktop in a private chroot while Android continues to provide the kernel, drivers, radio, camera stack, and other device-specific hardware support. The display server and Linux root filesystem are bundled in one APK; no separate Termux:X11 application is required.
 
 > [!WARNING]
 > METMC OS is alpha software. It requires root, can become the Android home launcher, and includes tools that can disable system applications. Back up important data, test it as a normal app before selecting it as the default launcher, and keep another launcher installed.
@@ -25,7 +25,7 @@ METMC OS does not provide a non-root mode. If you do not want to root your phone
 ## What to expect
 
 - A full Phosh desktop designed for touch and adaptable to portrait and landscape displays.
-- A bundled Ubuntu 24.04 ARM64 root filesystem. First boot extracts about 1 GB of Linux files and can take a minute or more depending on storage speed.
+- A bundled Debian 12 Bookworm ARM64 root filesystem. First boot extracts about 1 GB of Linux files and can take a minute or more depending on storage speed.
 - An embedded X11 server; the external Termux:X11 APK is not required.
 - GNOME Console, Files, Software, Calculator, Clocks, and other basic Linux applications.
 - Optional Android application shortcuts in the Phosh app drawer.
@@ -125,11 +125,11 @@ flatpak run APP_ID
 
 If its icon does not immediately appear in the drawer, wait a few seconds and reopen the drawer. Restart METMC OS if the desktop cache still has not refreshed.
 
-Do not blindly add `--no-sandbox`, run random privileged scripts, or copy x86-64 libraries into the root filesystem. Save the terminal output and include it in a bug report instead. When a Flatpak is incompatible, prefer the Ubuntu ARM64 package if one exists.
+Do not blindly add `--no-sandbox`, run random privileged scripts, or copy x86-64 libraries into the root filesystem. Save the terminal output and include it in a bug report instead. When a Flatpak is incompatible, prefer the Debian ARM64 package if one exists.
 
-### Ubuntu packages
+### Debian packages
 
-Packages from the configured Ubuntu repositories are the most direct option:
+Packages from the configured Debian repositories are the most direct option:
 
 ```bash
 apt update

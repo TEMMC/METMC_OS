@@ -18,3 +18,5 @@ rootfs/
 *.tgz
 !android/app/src/main/assets/rootfs/
 !android/app/src/main/assets/rootfs/README.md
+*.zip
+signing/
