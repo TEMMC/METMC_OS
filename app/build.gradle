@@ -3,13 +3,52 @@ plugins {
     id 'org.jetbrains.kotlin.android'
 }
 
-def metmcVersionCode = (providers.gradleProperty("METMC_VERSION_CODE").getOrElse("12")).toInteger()
-def metmcVersionName = providers.gradleProperty("METMC_VERSION_NAME").getOrElse("8.5")
+def metmcVersionCode = (providers.gradleProperty("METMC_VERSION_CODE").getOrElse("13")).toInteger()
+def metmcVersionName = providers.gradleProperty("METMC_VERSION_NAME").getOrElse("9.0")
+
+def nativosRef = 'ea98462bac6d0b60517e926b6c008f555dbee315'
+def nativosBase = "https://raw.githubusercontent.com/orailnoor/NativOS/${nativosRef}/android/app/src/main/"
+def nativosJava = [
+    'java/com/termux/x11/input/RenderData.java',
+    'java/com/termux/x11/input/InputEventSender.java',
+    'java/com/termux/x11/input/InputStub.java',
+    'java/com/termux/x11/input/TouchInputHandler.java',
+    'java/com/termux/x11/input/SwipeDetector.java',
+    'java/com/termux/x11/input/TapGestureDetector.java',
+    'java/com/termux/x11/input/InputStrategyInterface.java',
+    'java/com/termux/x11/MainActivity.java',
+    'java/com/termux/x11/utils/SamsungDexUtils.java',
+    'java/com/termux/x11/CmdEntryPoint.java',
+    'java/com/termux/x11/LorieView.java',
+    'java/com/termux/x11/Prefs.java'
+]
+
+tasks.register('prepareEmbeddedXlorie') {
+    def javaRoot = file("$buildDir/generated/nativOS/java")
+    def jniRoot = file("$buildDir/generated/nativOS/jniLibs/arm64-v8a")
+    outputs.dir(javaRoot)
+    outputs.file(file("$jniRoot/libXlorie.so"))
+    doLast {
+        javaRoot.mkdirs()
+        jniRoot.mkdirs()
+        nativosJava.each { rel ->
+            def out = new File(javaRoot, rel.substring('java/'.length()))
+            out.parentFile.mkdirs()
+            if (!out.exists() || out.length() == 0) {
+                new URL(nativosBase + rel).withInputStream { input -> out.bytes = input.bytes }
+            }
+        }
+        def so = new File(jniRoot, 'libXlorie.so')
+        if (!so.exists() || so.length() == 0) {
+            new URL("https://raw.githubusercontent.com/orailnoor/NativOS/${nativosRef}/android/app/src/main/xlorie-upstream/arm64-v8a/libXlorie.so").withInputStream { input -> so.bytes = input.bytes }
+        }
+        if (so.length() < 1024L * 1024L) throw new GradleException('Embedded Xlorie download is invalid')
+    }
+}
 
 android {
     namespace 'com.metmc.os'
     compileSdk 35
-
     defaultConfig {
         applicationId 'com.metmc.os'
         minSdk 23
@@ -17,8 +56,14 @@ android {
         versionCode metmcVersionCode
         versionName metmcVersionName
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
+        ndk { abiFilters 'arm64-v8a' }
     }
-
+    sourceSets {
+        main {
+            java.srcDir "$buildDir/generated/nativOS/java"
+            jniLibs.srcDir "$buildDir/generated/nativOS/jniLibs"
+        }
+    }
     signingConfigs {
         release {
             def ks = System.getenv("METMC_KEYSTORE_FILE")
@@ -30,32 +75,24 @@ android {
             }
         }
     }
-
     buildTypes {
-        debug {
-            applicationIdSuffix '.debug'
-            versionNameSuffix '-debug'
-        }
+        debug { applicationIdSuffix '.debug'; versionNameSuffix '-debug' }
         release {
             minifyEnabled false
             signingConfig signingConfigs.release
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
-
     buildFeatures { buildConfig = true; aidl = true }
     compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
     kotlinOptions { jvmTarget = '17' }
+    externalNativeBuild { cmake { path file("src/main/cpp/CMakeLists.txt") } }
 }
+
+tasks.named('preBuild').configure { dependsOn tasks.named('prepareEmbeddedXlorie') }
 
 dependencies {
     implementation 'androidx.core:core-ktx:1.15.0'
     implementation 'androidx.appcompat:appcompat:1.7.0'
     implementation 'com.google.android.material:material:1.12.0'
-}
-
-android {
-    externalNativeBuild {
-        cmake { path file("src/main/cpp/CMakeLists.txt") }
-    }
 }
