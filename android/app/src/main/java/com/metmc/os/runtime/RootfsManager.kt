@@ -184,6 +184,7 @@ class RootfsManager(private val context: Context) {
                 gtk-update-icon-cache -f -t /usr/share/icons/Adwaita 2>/dev/null || true
                 $runtimeCheck
             """.trimIndent()
+        )
 
         val verified = result == 0 && chrootManager.execChroot(runtimeCheck) == 0
 
