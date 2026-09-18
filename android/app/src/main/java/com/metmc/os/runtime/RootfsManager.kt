@@ -145,7 +145,15 @@ class RootfsManager(private val context: Context) {
      * immediately and the X11 cursor visibly flickers in a restart loop.
      */
     fun ensurePhoshRuntime(chrootManager: ChrootManager): Boolean {
+        // Always select the device-wide Debian installation before probing it.
+        if (!chrootManager.adoptExistingDebianRootfs() && !chrootManager.isRootfsReady()) {
+            Log.e(TAG, "No usable Debian rootfs available for Phosh runtime repair")
+            return false
+        }
         val runtimeCheck = """
+            test -x /usr/libexec/phosh &&
+            test -x /usr/bin/phoc &&
+            test -f /usr/bin/phosh-session &&
             test -f /usr/share/glib-2.0/schemas/org.gnome.settings-daemon.peripherals.gschema.xml &&
             test -f /usr/lib/aarch64-linux-gnu/gdk-pixbuf-2.0/2.10.0/loaders/libpixbufloader-svg.so
         """.trimIndent()
@@ -191,6 +199,7 @@ class RootfsManager(private val context: Context) {
 
     /** Install the adaptive Wayland terminal and remove the two legacy XTerm launchers. */
     fun ensureProfessionalTerminal(chrootManager: ChrootManager): Boolean {
+        chrootManager.adoptExistingDebianRootfs()
         val ready = chrootManager.execChroot(
             """
                 command -v kgx >/dev/null 2>&1 &&
@@ -384,6 +393,7 @@ class RootfsManager(private val context: Context) {
 
     fun installPhosh(chrootManager: ChrootManager, onProgress: (Double, String) -> Unit) {
         try {
+            chrootManager.adoptExistingDebianRootfs()
             onProgress(0.0, "Clearing package locks...")
             try { chrootManager.execChroot("rm -f /var/lib/apt/lists/lock /var/cache/apt/archives/lock /var/lib/dpkg/lock*; dpkg --configure -a 2>/dev/null || true") } catch (_: Exception) {}
 
