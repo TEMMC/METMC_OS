@@ -98,8 +98,16 @@ class X11ServerService : Service() {
         Os.setenv("HOME", filesDir.absolutePath, true)
         Os.setenv("TERMUX_X11_DEBUG", "1", true)
 
-        val xkbRoot = File(filesDir, "rootfs/usr/share/X11/xkb")
-        if (xkbRoot.exists()) Os.setenv("XKB_CONFIG_ROOT", xkbRoot.absolutePath, true)
+        // The Linux desktop rootfs is installed device-wide, not under the
+        // Android app files directory. Xlorie requires XKB_CONFIG_ROOT to
+        // point at the container's real XKB database before start().
+        val xkbRoot = File("/data/local/linux/rootfs/usr/share/X11/xkb")
+        if (xkbRoot.isDirectory) {
+            Os.setenv("XKB_CONFIG_ROOT", xkbRoot.absolutePath, true)
+            Log.i(TAG, "XKB_CONFIG_ROOT=" + xkbRoot.absolutePath)
+        } else {
+            Log.e(TAG, "XKB configuration directory missing: " + xkbRoot.absolutePath)
+        }
 
         val staleSocket = File(appTmpDir, ".X11-unix/X0")
         if (staleSocket.exists() && !staleSocket.delete()) {
