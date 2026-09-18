@@ -66,13 +66,23 @@ class ChrootManager(private val context: Context) {
 
     fun hasRoot(): Boolean = rootShell.hasRoot()
 
-    fun isRootfsReady(): Boolean =
-        File(rootfsDir, "usr/bin/bash").exists() ||
-        File(rootfsDir, "bin/bash").exists()
+    /** Select the device-wide Debian rootfs when it exists. */
+    private fun ensureSelectedRootfs(): Boolean {
+        if (File(rootfsDir, "etc/os-release").exists() &&
+            (File(rootfsDir, "usr/bin/bash").canExecute() || File(rootfsDir, "bin/bash").canExecute())) {
+            return true
+        }
+        return adoptExistingDebianRootfs()
+    }
 
-    fun isPhoshInstalled(): Boolean =
-        File(rootfsDir, "usr/bin/phosh-session").exists() ||
-        File(rootfsDir, "usr/bin/phoc").exists()
+    fun isRootfsReady(): Boolean = ensureSelectedRootfs()
+
+    fun isPhoshInstalled(): Boolean {
+        if (!ensureSelectedRootfs()) return false
+        return File(rootfsDir, "usr/libexec/phosh").canExecute() ||
+            File(rootfsDir, "usr/bin/phosh-session").exists() ||
+            File(rootfsDir, "usr/bin/phoc").canExecute()
+    }
 
     fun isRunning(): Boolean = sessionProcess?.isAlive == true
 
@@ -1618,6 +1628,10 @@ PHOSHEOF
 
     /** Execute a command inside the chroot as root. */
     fun execChroot(command: String, onLog: (String) -> Unit = {}): Int {
+        if (!ensureSelectedRootfs()) {
+            Log.e(TAG, "No usable Debian rootfs selected")
+            return 1
+        }
         // Never inherit Android's TMPDIR (normally /data/local/tmp): that path
         // does not exist inside the chroot and breaks GPG/Flatpak temporary dirs.
         val wrapped = "export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin; " +
