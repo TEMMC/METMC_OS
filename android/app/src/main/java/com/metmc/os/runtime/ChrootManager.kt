@@ -1434,6 +1434,7 @@ PHOCEOF
                 
                 # Configure wlroots X11 backend
                 export WLR_BACKENDS=x11
+                export WLR_X11_DISPLAY=:0
                 export WLR_X11_OUTPUTS=1
                 export DISPLAY=:0
                 
