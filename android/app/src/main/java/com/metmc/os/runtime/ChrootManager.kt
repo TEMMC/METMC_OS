@@ -62,6 +62,12 @@ class ChrootManager(private val context: Context) {
     private val turnipRoot: File get() = File(rootfsDir, "opt/metmc-gpu/turnip-$TURNIP_VERSION")
     private val turnipIcd: File get() = File(turnipRoot, "usr/share/vulkan/icd.d/freedreno_icd.aarch64.json")
 
+    /** Resolve Android's chroot binary explicitly; app PATHs are not reliable under su. */
+    private fun chrootBinary(): String {
+        val candidates = listOf("/system/bin/chroot", "/system/xbin/chroot")
+        return candidates.firstOrNull { File(it).canExecute() } ?: "chroot"
+    }
+
     // ── Status ──
 
     fun hasRoot(): Boolean = rootShell.hasRoot()
@@ -1494,7 +1500,7 @@ PHOSHEOF
         Log.i(TAG, "Starting Phosh session")
 
         val su = rootShell.findSuPath() ?: return
-        val fullCommand = "chroot ${rootfsDir.absolutePath} /usr/bin/env -i /bin/bash -c ${shellQuote(runScript)}"
+        val fullCommand = "${chrootBinary()} ${rootfsDir.absolutePath} /usr/bin/env -i /bin/bash -c ${shellQuote(runScript)}"
         val startedSession = ProcessBuilder(su, "-c", fullCommand)
             .redirectErrorStream(true)
             .start()
@@ -1636,7 +1642,7 @@ PHOSHEOF
         // does not exist inside the chroot and breaks GPG/Flatpak temporary dirs.
         val wrapped = "export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin; " +
             "export TMPDIR=/tmp HOME=/root; $command"
-        val output = rootShell.exec("chroot ${rootfsDir.absolutePath} /bin/bash -c ${shellQuote(wrapped)}") { chunk ->
+        val output = rootShell.exec("${chrootBinary()} ${rootfsDir.absolutePath} /bin/bash -c ${shellQuote(wrapped)}") { chunk ->
             Log.d(TAG, "chroot: ${chunk.trimEnd()}")
             onLog(chunk)
         }
