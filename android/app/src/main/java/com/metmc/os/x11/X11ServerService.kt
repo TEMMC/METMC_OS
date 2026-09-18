@@ -60,7 +60,15 @@ class X11ServerService : Service() {
                         Log.i(TAG, "Starting native X server in pid=${android.os.Process.myPid()}")
                         // METMC OS uses direct touchscreen input. Disable the X
                         // server cursor itself so no mouse arrow is composited.
-                        cmdEntryPoint.start(arrayOf(":0", "-nolock", "-legacy-drawing"))
+                        val primary = cmdEntryPoint.start(
+                            arrayOf(":0", "-nolock", "-legacy-drawing", "-force-bgra")
+                        )
+                        if (primary) {
+                            true
+                        } else {
+                            Log.w(TAG, "Primary X11 renderer start failed; retrying without forced BGRA")
+                            cmdEntryPoint.start(arrayOf(":0", "-nolock", "-legacy-drawing"))
+                        }
                     } catch (error: Throwable) {
                         Log.e(TAG, "Native X server failed to start", error)
                         false
