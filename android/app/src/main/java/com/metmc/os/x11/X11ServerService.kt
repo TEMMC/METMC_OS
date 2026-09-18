@@ -60,7 +60,7 @@ class X11ServerService : Service() {
                         Log.i(TAG, "Starting native X server in pid=${android.os.Process.myPid()}")
                         // METMC OS uses direct touchscreen input. Disable the X
                         // server cursor itself so no mouse arrow is composited.
-                        cmdEntryPoint.start(arrayOf(":0", "-nolock", "-legacy-drawing", "-nocursor"))
+                        cmdEntryPoint.start(arrayOf(":0", "-nolock", "-legacy-drawing"))
                     } catch (error: Throwable) {
                         Log.e(TAG, "Native X server failed to start", error)
                         false
@@ -88,6 +88,7 @@ class X11ServerService : Service() {
         Os.setenv("XDG_RUNTIME_DIR", appTmpDir.absolutePath, true)
         Os.setenv("PREFIX", File(filesDir, "usr").absolutePath, true)
         Os.setenv("HOME", filesDir.absolutePath, true)
+        Os.setenv("TERMUX_X11_DEBUG", "1", true)
 
         val xkbRoot = File(filesDir, "rootfs/usr/share/X11/xkb")
         if (xkbRoot.exists()) Os.setenv("XKB_CONFIG_ROOT", xkbRoot.absolutePath, true)
