@@ -425,16 +425,16 @@ class RootfsManager(private val context: Context) {
 #include <stdlib.h>
 #include <stddef.h>
 int connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen) {
-    int (*real_connect)(int, const struct sockaddr *, socklen_t) = dlsym(RTLD_NEXT, \"connect\");
+    int (*real_connect)(int, const struct sockaddr *, socklen_t) = dlsym(RTLD_NEXT, "connect");
     if (addr && addr->sa_family == AF_UNIX) {
         struct sockaddr_un *un = (struct sockaddr_un *)addr;
-        if (strstr(un->sun_path, \".X11-unix/X\")) {
+        if (strstr(un->sun_path, ".X11-unix/X")) {
             struct sockaddr_un abstract_addr;
             memset(&abstract_addr, 0, sizeof(abstract_addr));
             abstract_addr.sun_family = AF_UNIX;
-            const char *tmpdir = getenv(\"TMPDIR\");
-            if (!tmpdir) tmpdir = \"/tmp\";
-            snprintf(abstract_addr.sun_path + 1, sizeof(abstract_addr.sun_path) - 1, \"%s/.X11-unix/X0\", tmpdir);
+            const char *tmpdir = getenv("TMPDIR");
+            if (!tmpdir) tmpdir = "/tmp";
+            snprintf(abstract_addr.sun_path + 1, sizeof(abstract_addr.sun_path) - 1, "%s/.X11-unix/X0", tmpdir);
             socklen_t abs_len = offsetof(struct sockaddr_un, sun_path) + 1 + strlen(abstract_addr.sun_path + 1);
             return real_connect(sockfd, (struct sockaddr *)&abstract_addr, abs_len);
         }
@@ -453,7 +453,7 @@ gcc -shared -fPIC -o /usr/local/lib/libsocket_hook.so /tmp/socket_hook.c -ldl"
 #include <stdio.h>
 extern xcb_extension_t xcb_dri3_id;
 const xcb_query_extension_reply_t *xcb_get_extension_data(xcb_connection_t *c, xcb_extension_t *ext) {
-    const xcb_query_extension_reply_t *(*real_fn)(xcb_connection_t*, xcb_extension_t*) = dlsym(RTLD_NEXT, \"xcb_get_extension_data\");
+    const xcb_query_extension_reply_t *(*real_fn)(xcb_connection_t*, xcb_extension_t*) = dlsym(RTLD_NEXT, "xcb_get_extension_data");
     if (ext == &xcb_dri3_id) {
         const xcb_query_extension_reply_t *reply = real_fn(c, ext);
         if (reply && reply->present) {
