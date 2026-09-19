@@ -85,9 +85,12 @@ class ChrootManager(private val context: Context) {
 
     fun isPhoshInstalled(): Boolean {
         if (!ensureSelectedRootfs()) return false
-        return File(rootfsDir, "usr/libexec/phosh").canExecute() ||
-            File(rootfsDir, "usr/bin/phosh-session").exists() ||
-            File(rootfsDir, "usr/bin/phoc").canExecute()
+        // METMC uses Weston/X11/Pixman as the compositor on this device.
+        // Phoc alone is not a usable desktop because its X11 backend requires
+        // a DRI3 DRM fd that the embedded software X server does not provide.
+        val phosh = File(rootfsDir, "usr/libexec/phosh").canExecute()
+        val weston = File(rootfsDir, "usr/bin/weston").canExecute()
+        return phosh && weston
     }
 
     fun isRunning(): Boolean = sessionProcess?.isAlive == true
@@ -1524,23 +1527,10 @@ exit ${'$'}STATUS
 PHOSHEOF
                 chmod +x /tmp/start_phosh.sh
                 exec /tmp/start_phosh.sh
-            elif command -v phoc >/dev/null 2>&1; then
-                echo "METMC OS: Weston unavailable; using Phoc fallback"
-                export WLR_BACKENDS=x11
-                export WLR_X11_DISPLAY=:0
-                export WLR_X11_OUTPUTS=1
-                export DISPLAY=:0
-                export WLR_RENDERER=pixman
-                export WLR_DRM_NO_ATOMIC=1
-                export WLR_DRM_DEVICES=""
-                export TMPDIR=${tmpDir.absolutePath}
-                exec dbus-run-session -- /usr/libexec/phosh -U
-            elif command -v kgx >/dev/null 2>&1; then
-                echo "METMC OS: Fallback — launching GNOME Console"
-                exec kgx
             else
-                echo "METMC OS: ERROR — no compositor or terminal found"
-                sleep 999
+                echo "METMC OS: ERROR — Weston is required for the embedded Phosh desktop"
+                echo "METMC OS: Install/repair the Weston X11/Pixman runtime before starting the session"
+                exit 1
             fi
         """.trimIndent()
 
