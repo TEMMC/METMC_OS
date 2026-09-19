@@ -1470,20 +1470,9 @@ PHOCEOF
                 export WAYLAND_DISPLAY=wayland-0
                 export XDG_SESSION_TYPE=wayland
 
-                PRELOAD=""
-                for lib in $preloadLibraries; do
-                    if [ -f "${'$'}lib" ]; then
-                        if [ -z "${'$'}PRELOAD" ]; then
-                            PRELOAD="${'$'}lib"
-                        else
-                            PRELOAD="${'$'}PRELOAD:${'$'}lib"
-                        fi
-                    fi
-                done
-                if [ -n "${'$'}PRELOAD" ]; then
-                    export LD_PRELOAD=${'$'}PRELOAD
-                    echo "METMC OS: LD_PRELOAD=${'$'}LD_PRELOAD"
-                fi
+                # Weston is the compositor, not the old wlroots/Phoc path.
+                # Do not inject Phoc-specific compatibility shims into Weston.
+                unset LD_PRELOAD
 
                 APP_PRELOAD=""
                 for lib in $appPreloadLibraries; do
