@@ -153,9 +153,11 @@ class RootfsManager(private val context: Context) {
         val runtimeCheck = """
             test -x /usr/libexec/phosh &&
             test -x /usr/bin/phoc &&
+            test -x /usr/bin/weston &&
             test -f /usr/bin/phosh-session &&
             test -f /usr/share/glib-2.0/schemas/org.gnome.settings-daemon.peripherals.gschema.xml &&
-            test -f /usr/lib/aarch64-linux-gnu/gdk-pixbuf-2.0/2.10.0/loaders/libpixbufloader-svg.so
+            test -f /usr/lib/aarch64-linux-gnu/gdk-pixbuf-2.0/2.10.0/loaders/libpixbufloader-svg.so &&
+            test -f /usr/lib/aarch64-linux-gnu/libweston-10/x11-backend.so
         """.trimIndent()
 
         // IMPORTANT: the active Debian rootfs may be the device-wide
@@ -413,9 +415,11 @@ class RootfsManager(private val context: Context) {
             chrootManager.execChroot("TMPDIR=/tmp DEBIAN_FRONTEND=noninteractive TZ=Etc/UTC apt-get install -y --no-install-recommends dbus dbus-x11 policykit-1 packagekit")
 
             onProgress(0.20, "Installing Weston/Pixman and Phosh...")
-            chrootManager.execChroot(
+            if (chrootManager.execChroot(
                 "TMPDIR=/tmp DEBIAN_FRONTEND=noninteractive TZ=Etc/UTC apt-get install -y --no-install-recommends weston libpixman-1-0 xwayland phoc phosh"
-            )
+            ) != 0) {
+                throw IllegalStateException("Weston/Phosh package installation failed")
+            }
 
             onProgress(0.40, "Installing GUI Dependencies...")
             chrootManager.execChroot("TMPDIR=/tmp DEBIAN_FRONTEND=noninteractive TZ=Etc/UTC apt-get install -y --no-install-recommends squeekboard phosh-mobile-settings gnome-settings-daemon gnome-settings-daemon-common librsvg2-common gnome-console adwaita-icon-theme fonts-cantarell")
