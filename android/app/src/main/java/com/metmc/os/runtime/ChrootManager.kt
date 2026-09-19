@@ -229,14 +229,31 @@ class ChrootManager(private val context: Context) {
         Log.i(TAG, "All mounts ready")
     }
 
-    /** Bind-mount the host X11 socket directory into the chroot. */
+    /** Bind-mount the embedded X11 socket directory into the chroot. */
     fun bindX11Socket() {
         if (!hasRoot()) return
+        x11HostDir.mkdirs()
         val chrootX11 = File(rootfsDir, "tmp/.X11-unix").absolutePath
 
         val mounts = rootShell.exec("mount").lines()
-        if (mounts.any { it.contains(" on $chrootX11 ") }) {
-            rootShell.exec("umount $chrootX11")
+        val existing = mounts.firstOrNull { it.contains(" on $chrootX11 ") }
+        if (existing != null && !existing.startsWith("${x11HostDir.absolutePath} ")) {
+            rootShell.exec("umount -l $chrootX11 2>/dev/null || true")
+        }
+
+        val refreshedMounts = rootShell.exec("mount").lines()
+        if (refreshedMounts.none { it.contains(" on $chrootX11 ") }) {
+            val result = rootShell.exec(
+                "mkdir -p $chrootX11 && " +
+                    "mount --bind ${x11HostDir.absolutePath} $chrootX11 && " +
+                    "chmod 0777 $chrootX11 && " +
+                    "echo METMC_X11_SOCKET_READY"
+            )
+            if (result.contains("METMC_X11_SOCKET_READY")) {
+                Log.i(TAG, "Bound embedded X11 socket directory into chroot")
+            } else {
+                Log.e(TAG, "Could not bind embedded X11 socket directory: ${result.trim()}")
+            }
         }
     }
 
