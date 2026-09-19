@@ -160,7 +160,20 @@ class ChrootManager(private val context: Context) {
         mountIfNeeded("/proc", "--bind /proc") { isMounted("proc") }
         mountIfNeeded("/sys", "--bind /sys") { isMounted("sys") }
         mountIfNeeded("/run", "-t tmpfs tmpfs") { isMounted("run") }
-        mountIfNeeded("/tmp", "-t tmpfs tmpfs") { isMounted("tmp") }
+        // The embedded X11 server lives in the Android app TMPDIR. The chroot
+        // must see that exact directory as /tmp so X11 socket discovery and
+        // libsocket_hook use the same mount namespace, as required for chroot.
+        tmpDir.mkdirs()
+        val tmpMount = mounts.firstOrNull { it.contains(" on ${File(rootfsDir, "tmp").absolutePath} ") }
+        if (tmpMount == null || !tmpMount.startsWith("${tmpDir.absolutePath} ")) {
+            if (tmpMount != null) rootShell.exec("umount -l ${File(rootfsDir, "tmp").absolutePath} 2>/dev/null || true")
+            rootShell.exec(
+                "mkdir -p ${File(rootfsDir, "tmp").absolutePath} && " +
+                    "mount --bind ${tmpDir.absolutePath} ${File(rootfsDir, "tmp").absolutePath} && " +
+                    "chmod 1777 ${File(rootfsDir, "tmp").absolutePath}"
+            )
+            Log.i(TAG, "Bound Android app TMPDIR into chroot /tmp")
+        }
 
         // Android's app-data filesystem is nosuid. Change the flag only on the
         // isolated rootfs bind (not its parent mount), addressing it as / from
