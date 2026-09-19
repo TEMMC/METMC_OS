@@ -397,15 +397,25 @@ class RootfsManager(private val context: Context) {
             onProgress(0.0, "Clearing package locks...")
             try { chrootManager.execChroot("rm -f /var/lib/apt/lists/lock /var/cache/apt/archives/lock /var/lib/dpkg/lock*; dpkg --configure -a 2>/dev/null || true") } catch (_: Exception) {}
 
-            onProgress(0.05, "Updating package lists...")
+            onProgress(0.05, "Preparing APT verification tools...")
+            // Some older/rootfs snapshots do not contain gpgv. Install it from
+            // the existing Debian package indexes before refreshing repository
+            // metadata; otherwise apt-get update cannot verify InRelease files.
+            chrootManager.execChroot(
+                "TMPDIR=/tmp DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends gpgv ca-certificates || true"
+            )
+
+            onProgress(0.08, "Updating package lists...")
             chrootManager.execChroot("apt-get update -y")
 
             // dbus is CRITICAL - without it no session can start
             onProgress(0.10, "Installing D-Bus (required)...")
             chrootManager.execChroot("TMPDIR=/tmp DEBIAN_FRONTEND=noninteractive TZ=Etc/UTC apt-get install -y --no-install-recommends dbus dbus-x11 policykit-1 packagekit")
 
-            onProgress(0.20, "Installing Phosh & Compositor...")
-            chrootManager.execChroot("TMPDIR=/tmp DEBIAN_FRONTEND=noninteractive TZ=Etc/UTC apt-get install -y --no-install-recommends phoc phosh")
+            onProgress(0.20, "Installing Weston/Pixman and Phosh...")
+            chrootManager.execChroot(
+                "TMPDIR=/tmp DEBIAN_FRONTEND=noninteractive TZ=Etc/UTC apt-get install -y --no-install-recommends weston libpixman-1-0 xwayland phoc phosh"
+            )
 
             onProgress(0.40, "Installing GUI Dependencies...")
             chrootManager.execChroot("TMPDIR=/tmp DEBIAN_FRONTEND=noninteractive TZ=Etc/UTC apt-get install -y --no-install-recommends squeekboard phosh-mobile-settings gnome-settings-daemon gnome-settings-daemon-common librsvg2-common gnome-console adwaita-icon-theme fonts-cantarell")
