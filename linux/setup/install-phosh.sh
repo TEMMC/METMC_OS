@@ -27,6 +27,7 @@ echo "[2/8] Installing display server dependencies..."
 apt-get install -y --no-install-recommends \
     xwayland \
     weston \
+    libpixman-1-0 \
     x11-utils \
     x11-xserver-utils \
     dbus-x11 \
