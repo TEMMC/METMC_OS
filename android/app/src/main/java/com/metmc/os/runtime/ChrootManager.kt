@@ -1459,29 +1459,17 @@ PHOCEOF
             
             echo "METMC OS: Display configured: ${screenWidth}x${screenHeight} @ scale $displayScale"
             echo "METMC OS: Starting Wayland session..."
-            if command -v phoc >/dev/null 2>&1; then
-                echo "METMC OS: Launching phoc (X11 backend)..."
-                
-                # Configure wlroots X11 backend
-                export WLR_BACKENDS=x11
-                export WLR_X11_DISPLAY=:0
-                export WLR_X11_OUTPUTS=1
+            # Bookworm phoc/wlroots X11 requires a DRI3 DRM FD. Embedded Xlorie
+            # is a software X server and intentionally has no usable DRM FD.
+            # Weston can use the same X11 display with Pixman while Phosh remains
+            # the actual mobile shell client.
+            if command -v weston >/dev/null 2>&1; then
+                echo "METMC OS: Launching Weston X11/Pixman compositor for Phosh"
                 export DISPLAY=:0
-                
-                # The X11 backend never owns Android's physical DRM display.
-                export WLR_DRM_NO_ATOMIC=1
-                export WLR_DRM_DEVICES=""
-                
-                # CRITICAL: Set TMPDIR to match the Android app's TMPDIR
-                # libsocket_hook.so uses TMPDIR to construct the abstract socket path
-                # The bundled X11 server (libXlorie.so) creates abstract socket at: @<TMPDIR>/.X11-unix/X0
-                # Both sides MUST use the same TMPDIR value for the abstract socket path to match
                 export TMPDIR=${tmpDir.absolutePath}
-                
-                # LD_PRELOAD: Only load libraries that actually exist on this device
-                # libsocket_hook.so translates filesystem connect() to abstract socket
-                # libnodri3.so makes wlroots use X11 shared-memory presentation.
-                # libandroid-shmem.so provides shared memory on Android kernels
+                export WAYLAND_DISPLAY=wayland-0
+                export XDG_SESSION_TYPE=wayland
+
                 PRELOAD=""
                 for lib in $preloadLibraries; do
                     if [ -f "${'$'}lib" ]; then
@@ -1495,12 +1483,8 @@ PHOCEOF
                 if [ -n "${'$'}PRELOAD" ]; then
                     export LD_PRELOAD=${'$'}PRELOAD
                     echo "METMC OS: LD_PRELOAD=${'$'}LD_PRELOAD"
-                else
-                    echo "METMC OS: No LD_PRELOAD libraries found (fresh install)"
                 fi
 
-                # Phoc needs libnodri3, but hardware-accelerated applications do
-                # not. Phosh replaces LD_PRELOAD before launching the app session.
                 APP_PRELOAD=""
                 for lib in $appPreloadLibraries; do
                     if [ -f "${'$'}lib" ]; then
@@ -1512,27 +1496,56 @@ PHOCEOF
                     fi
                 done
                 export METMC_APP_LD_PRELOAD="${'$'}APP_PRELOAD"
-                
-                echo "METMC OS: TMPDIR=${'$'}TMPDIR"
-                echo "METMC OS: DISPLAY=${'$'}DISPLAY"
-                echo "METMC OS: GPU=${'$'}METMC_GPU"
-                
+
                 cat > /tmp/start_phosh.sh << 'PHOSHEOF'
 #!/bin/bash
 echo $$ > /tmp/phosh_loop.pid
-while true; do
-    dbus-run-session -- phoc -C /etc/metmc/phoc.ini -E "bash -c '
-        export LD_PRELOAD=${'$'}METMC_APP_LD_PRELOAD
-        [ -x /usr/libexec/xdg-desktop-portal-gtk ] && /usr/libexec/xdg-desktop-portal-gtk >/tmp/xdg-desktop-portal-gtk.log 2>&1 &
-        [ -x /usr/libexec/xdg-desktop-portal ] && /usr/libexec/xdg-desktop-portal >/tmp/xdg-desktop-portal.log 2>&1 &
-        exec /usr/libexec/phosh -U
-    '"
-    echo "METMC OS: Phoc exited, restarting..."
-    sleep 0.5
+rm -f /tmp/runtime-root/wayland-0
+weston --backend=x11-backend.so --use-pixman --fullscreen --width=${screenWidth} --height=${screenHeight} --socket=wayland-0 --no-config >/tmp/weston.log 2>&1 &
+WESTON_PID=$!
+for attempt in $(seq 1 80); do
+    if [ -S /tmp/runtime-root/wayland-0 ]; then break; fi
+    if ! kill -0 ${'$'}WESTON_PID 2>/dev/null; then
+        echo "METMC OS: Weston exited during startup"
+        cat /tmp/weston.log 2>/dev/null || true
+        exit 1
+    fi
+    sleep 0.25
 done
+if [ ! -S /tmp/runtime-root/wayland-0 ]; then
+    echo "METMC OS: Weston did not create wayland-0"
+    cat /tmp/weston.log 2>/dev/null || true
+    kill ${'$'}WESTON_PID 2>/dev/null || true
+    exit 1
+fi
+export WAYLAND_DISPLAY=wayland-0
+export XDG_SESSION_TYPE=wayland
+dbus-run-session -- bash -c '
+    export LD_PRELOAD=${'$'}METMC_APP_LD_PRELOAD
+    export WAYLAND_DISPLAY=wayland-0
+    export XDG_RUNTIME_DIR=/tmp/runtime-root
+    [ -x /usr/libexec/xdg-desktop-portal-gtk ] && /usr/libexec/xdg-desktop-portal-gtk >/tmp/xdg-desktop-portal-gtk.log 2>&1 &
+    [ -x /usr/libexec/xdg-desktop-portal ] && /usr/libexec/xdg-desktop-portal >/tmp/xdg-desktop-portal.log 2>&1 &
+    exec /usr/libexec/phosh -U
+'
+STATUS=${'$'}?
+kill ${'$'}WESTON_PID 2>/dev/null || true
+wait ${'$'}WESTON_PID 2>/dev/null || true
+exit ${'$'}STATUS
 PHOSHEOF
                 chmod +x /tmp/start_phosh.sh
                 exec /tmp/start_phosh.sh
+            elif command -v phoc >/dev/null 2>&1; then
+                echo "METMC OS: Weston unavailable; using Phoc fallback"
+                export WLR_BACKENDS=x11
+                export WLR_X11_DISPLAY=:0
+                export WLR_X11_OUTPUTS=1
+                export DISPLAY=:0
+                export WLR_RENDERER=pixman
+                export WLR_DRM_NO_ATOMIC=1
+                export WLR_DRM_DEVICES=""
+                export TMPDIR=${tmpDir.absolutePath}
+                exec dbus-run-session -- /usr/libexec/phosh -U
             elif command -v kgx >/dev/null 2>&1; then
                 echo "METMC OS: Fallback — launching GNOME Console"
                 exec kgx
