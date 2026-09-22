@@ -77,13 +77,17 @@ tasks.named("preBuild").configure {
     dependsOn(preparePatchedXlorie)
 }
 
-
 dependencies {
     implementation("androidx.core:core-ktx:1.13.1")
     implementation("androidx.annotation:annotation:1.8.0")
     implementation("androidx.appcompat:appcompat:1.7.0")
-    implementation("com.google.android.material:material:1.12.0")
     implementation("androidx.lifecycle:lifecycle-service:2.8.3")
+    implementation("com.google.android.material:material:1.12.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
     implementation("org.json:json:20240303")
+
+    // Real Termux terminal renderer/input/selection/clipboard implementation.
+    // terminal-emulator is pulled transitively by terminal-view.
+    implementation("com.termux.termux-app:terminal-view:0.118.0")
+    implementation("com.google.guava:listenablefuture:9999.0-empty-to-avoid-conflict-with-guava")
 }
