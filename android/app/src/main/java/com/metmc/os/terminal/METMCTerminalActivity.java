@@ -200,8 +200,6 @@ public final class METMCTerminalActivity extends Activity
     @Override public void onBell(@NonNull TerminalSession s) { }
     @Override public void onColorsChanged(@NonNull TerminalSession s) { terminalView.invalidate(); }
     @Override public void onTerminalCursorStateChange(boolean state) { terminalView.invalidate(); }
-    @Override public void setTerminalShellPid(@NonNull TerminalSession s, int pid) { }
-
     @Override public Integer getTerminalCursorStyle() { return null; }
 
     @Override public float onScale(float scale) { return scale; }
