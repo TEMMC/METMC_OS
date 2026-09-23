@@ -120,6 +120,25 @@ class SettingsActivity : Activity() {
         }, PremiumUi.matchWidth())
 
         content.addView(PremiumUi.verticalSpace(this, 26))
+        content.addView(PremiumUi.sectionLabel(this, "About"))
+        content.addView(group().apply {
+            addView(row(
+                title = "METMC OS",
+                subtitle = "Android + Linux desktop environment"
+            ))
+            addView(PremiumUi.separator(this@SettingsActivity))
+            addView(row(
+                title = "Created by",
+                subtitle = "Tinotenda Enock Mapfumo (Dr TEMMC)"
+            ))
+            addView(PremiumUi.separator(this@SettingsActivity))
+            addView(row(
+                title = "About METMC OS",
+                subtitle = "METMC OS integrates Android applications with a Debian/Linux desktop and provides a native desktop experience on supported devices."
+            ))
+        }, PremiumUi.matchWidth())
+
+        content.addView(PremiumUi.verticalSpace(this, 26))
         content.addView(group().apply {
             addView(row("Return to desktop", trailingText = "›") {
                 startActivity(Intent(this@SettingsActivity, KioskActivity::class.java).apply {
