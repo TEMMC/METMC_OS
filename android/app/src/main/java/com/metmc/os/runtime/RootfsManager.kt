@@ -494,8 +494,10 @@ EOF
 gcc -shared -fPIC -o /usr/local/lib/libmetmc-close-range.so /tmp/close_range_compat.c"
             """.trimIndent())
 
-            onProgress(0.90, "Installing Built-in Apps & Store...")
-            chrootManager.execChroot("TMPDIR=/tmp DEBIAN_FRONTEND=noninteractive TZ=Etc/UTC apt-get install -y --no-install-recommends software-properties-common nautilus gnome-calculator gnome-clocks megapixels gnome-software gnome-software-plugin-flatpak flatpak")
+            onProgress(0.90, "Installing Built-in Apps & Archive Tools...")
+            chrootManager.execChroot("""
+                TMPDIR=/tmp DEBIAN_FRONTEND=noninteractive TZ=Etc/UTC apt-get install -y --no-install-recommends                     software-properties-common                     nautilus                     file-roller                     p7zip-full                     libarchive-tools                     zip unzip                     tar gzip bzip2 xz-utils zstd lz4                     squashfs-tools                     gnome-calculator gnome-clocks megapixels                     gnome-software gnome-software-plugin-flatpak flatpak
+            """.trimIndent())
 
             onProgress(0.95, "Setting up Firefox...")
             chrootManager.execChroot("""
