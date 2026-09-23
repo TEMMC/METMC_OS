@@ -45,9 +45,13 @@ object AndroidAppIntegration {
             )
 
             val activities = if (METMCPreferences.showAndroidApps(context)) {
-                val launcherIntent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
+                val launcherIntents = listOf(
+                    Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER),
+                    Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LEANBACK_LAUNCHER)
+                )
                 @Suppress("DEPRECATION")
-                context.packageManager.queryIntentActivities(launcherIntent, 0)
+                launcherIntents
+                    .flatMap { context.packageManager.queryIntentActivities(it, 0) }
                     .filter { it.activityInfo.packageName != context.packageName }
                     .distinctBy { ComponentName(it.activityInfo.packageName, it.activityInfo.name) }
                     .sortedBy { it.loadLabel(context.packageManager).toString().lowercase() }
