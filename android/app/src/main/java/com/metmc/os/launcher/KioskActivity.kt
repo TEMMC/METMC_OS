@@ -38,6 +38,7 @@ import com.metmc.os.settings.SettingsActivity
 import com.metmc.os.x11.X11ServiceClient
 import com.metmc.os.x11.X11InputController
 import com.metmc.os.x11.X11ServerService
+import com.metmc.os.update.MetmcSelfUpdater
 import com.termux.x11.MainActivity
 import com.termux.x11.LorieView
 import java.util.concurrent.CountDownLatch
@@ -907,6 +908,7 @@ class KioskActivity : Activity() {
         super.onResume()
         enterImmersiveMode()
         AndroidAppIntegration.sync(this)
+        MetmcSelfUpdater.check(this)
         if (waitingForRoot) retryAfterRootGrant()
 
         val returningFromAndroid = AndroidAppIntegration.consumeAndroidAppReturn()
