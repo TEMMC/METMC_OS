@@ -44,7 +44,7 @@ object MetmcSelfUpdater {
                 val apkUrl = update.optString("apkUrl").takeIf { it.isNotBlank() } ?: return@Thread
                 val expectedSha = update.optString("sha256").lowercase().takeIf { it.matches(Regex("[0-9a-f]{64}")) }
                     ?: return@Thread
-                val apk = downloadApk(apkUrl, expectedSha) ?: return@Thread
+                val apk = downloadApk(activity.cacheDir, apkUrl, expectedSha) ?: return@Thread
 
                 activity.runOnUiThread {
                     install(activity, apk)
@@ -75,9 +75,9 @@ object MetmcSelfUpdater {
         }
     }
 
-    private fun downloadApk(url: String, expectedSha: String): File? {
-        val directory = File.createTempFile("metmc-update-", ".dir").apply {
-            delete()
+    private fun downloadApk(cacheDir: File, url: String, expectedSha: String): File? {
+        val directory = File(cacheDir, "metmc-update").apply {
+            deleteRecursively()
             mkdirs()
         }
         val part = File(directory, "metmc-os.apk.part")
